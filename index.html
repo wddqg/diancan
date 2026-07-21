@@ -69,10 +69,12 @@
   .switch button:active{transform:scale(.96);}
 
   /* body scroll area */
-  .screen{grid-row:2;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 24px;position:relative;z-index:1;}
+  .screen{grid-row:2;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 24px;position:relative;z-index:3;}
   .hidden{display:none !important;}
 
   /* category chips */
+  /* 顾客视图头部：分类条 + 搜索框 吸顶固定，不被菜品/装饰遮挡 */
+  .custHead{position:sticky;top:0;z-index:9;background:#fffdfb;padding:6px 0 8px;margin:0;}
   .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none;}
   .chips::-webkit-scrollbar{display:none;}
   .chip{
@@ -151,9 +153,19 @@
   .upload{
     border:2px dashed var(--lav);border-radius:16px;padding:14px;text-align:center;
     cursor:pointer;color:var(--lav);font-size:14px;background:var(--lav-soft);transition:.2s;
+    font-family:inherit;width:100%;box-sizing:border-box;display:block;
   }
+  .upload:hover{background:var(--pink-soft);}
   .upload:active{transform:scale(.98);}
+  .upload:focus-visible{outline:3px solid var(--pink);outline-offset:2px;}
   .preview-img{width:70px;height:70px;border-radius:14px;object-fit:cover;margin-top:10px;border:2px solid var(--pink-soft);}
+  .img-remove{margin-top:8px;border:none;background:var(--lav-soft);color:var(--lav);font-family:inherit;font-size:13px;padding:6px 12px;border-radius:12px;cursor:pointer;}
+  .img-remove:active{transform:scale(.96);}
+  .search{
+    margin:10px 2px 0;padding:11px 14px;border:2px solid var(--pink-soft);border-radius:14px;
+    font-family:inherit;font-size:14px;color:var(--ink);background:#fff;box-sizing:border-box;width:calc(100% - 4px);
+  }
+  .search:focus-visible{outline:3px solid var(--pink);outline-offset:2px;}
   .savebtn{
     width:100%;border:none;cursor:pointer;font-family:inherit;font-size:17px;color:#fff;
     background:linear-gradient(135deg,var(--mint),var(--pink));
@@ -191,15 +203,28 @@
   @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
   .sheet h3{margin:0 0 14px;font-size:20px;color:var(--pink);display:flex;align-items:center;gap:8px;}
   .oline{display:flex;justify-content:space-between;padding:9px 2px;border-bottom:1px dashed var(--pink-soft);font-size:15px;}
-  .paymethod{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
-  .payopt{display:flex;align-items:center;gap:12px;padding:13px;border-radius:16px;background:var(--cream);border:2px solid transparent;cursor:pointer;transition:.2s;}
-  .payopt.sel{border-color:var(--pink);background:var(--pink-soft);}
-  .payopt .pico{font-size:24px;}
-  .payopt .pname{font-size:15px;flex:1;}
-  .payopt .dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--lav);}
-  .payopt.sel .dot{background:var(--pink);border-color:var(--pink);}
   .bigpay{width:100%;border:none;cursor:pointer;font-family:inherit;font-size:18px;color:#fff;background:linear-gradient(135deg,var(--pink),var(--lav));padding:14px;border-radius:20px;box-shadow:var(--shadow-lg);}
   .bigpay:active{transform:scale(.97);}
+
+  /* 自定义确认弹窗 */
+  .confirm-bg{
+    position:fixed;inset:0;background:rgba(90,74,82,.45);z-index:30;
+    display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .15s ease;
+  }
+  .confirm-box{
+    background:#fff;width:100%;max-width:320px;border-radius:22px;padding:22px 20px 18px;
+    box-shadow:var(--shadow-lg);text-align:center;animation:popIn .18s ease;
+  }
+  .confirm-box .ctitle{font-size:18px;color:var(--pink);margin-bottom:8px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .confirm-box .cmsg{font-size:14px;color:#665;line-height:1.5;margin-bottom:18px;}
+  .confirm-box .cbtns{display:flex;gap:12px;}
+  .confirm-box .cbtn{flex:1;border:none;cursor:pointer;font-family:inherit;font-size:15px;padding:11px;border-radius:14px;transition:.15s;}
+  .confirm-box .cbtn:active{transform:scale(.97);}
+  .confirm-box .c-cancel{background:var(--cream);color:#887;}
+  .confirm-box .c-ok{background:linear-gradient(135deg,var(--pink),var(--lav));color:#fff;}
+  .confirm-box .c-ok.danger{background:linear-gradient(135deg,#ff8a8a,#ff6b8a);}
+  @keyframes popIn{from{transform:scale(.9);opacity:.6;}to{transform:scale(1);opacity:1;}}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 
   /* success */
   .success{text-align:center;padding:20px 10px;}
@@ -220,6 +245,12 @@
     opacity:0;transition:.3s;pointer-events:none;
   }
   .toast.show{opacity:.95;}
+
+  /* 启动加载遮罩 + 云端同步提示 */
+  .loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fffdfb;color:#bba;font-size:15px;z-index:9;}
+  .spinner{width:40px;height:40px;border:4px solid var(--pink-soft);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .sync-hint{text-align:center;color:#bba;font-size:13px;padding:6px 0 2px;}
 
   /* 键盘焦点指示 */
   button:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--pink);outline-offset:2px;}
@@ -251,9 +282,19 @@
     </div>
   </div>
 
+  <!-- 启动加载遮罩 -->
+  <div id="appLoading" class="loading">
+    <div class="spinner"></div>
+    <div>菜单加载中… 🍡</div>
+  </div>
+
   <!-- 顾客视图 -->
   <div id="customerView" class="screen">
-    <div class="chips" id="chips"></div>
+    <div class="custHead">
+      <div class="chips" id="chips"></div>
+      <input id="dishSearch" class="search" placeholder="🔍 搜索菜品…" aria-label="搜索菜品" oninput="onSearch()" />
+    </div>
+    <div id="syncHint" class="sync-hint hidden">🔄 正在同步云端菜单…</div>
     <div class="grid" id="dishGrid"></div>
     <div id="custEmpty" class="empty hidden">还没有菜品哦，去「添加菜品」添加吧 🍰</div>
   </div>
@@ -286,9 +327,10 @@
       </div>
       <div class="field">
         <label>菜品图片（可选，可拍照/相册）</label>
-        <div class="upload" onclick="document.getElementById('fImg').click()">📷 点击上传图片</div>
+        <button type="button" class="upload" onclick="document.getElementById('fImg').click()" aria-label="上传菜品图片">📷 点击上传图片</button>
         <input id="fImg" type="file" accept="image/*" style="display:none" onchange="onPickImage(event)" />
         <img id="fPreview" class="preview-img hidden" />
+        <button id="fImgRemove" type="button" class="img-remove hidden" onclick="removePickedImage()">✕ 移除图片</button>
       </div>
       <button class="savebtn" onclick="addDish()">💖 保存到菜单</button>
     </div>
@@ -323,9 +365,11 @@
     <h3>🧾 订单确认</h3>
     <div id="orderLines"></div>
     <div class="oline" style="border:none;font-size:17px;"><span>合计</span><span style="color:var(--pink)">¥<span id="orderTotal">0</span></span></div>
-    <div class="paymethod" id="payMethods">
-      <div class="payopt sel" data-pay="wechat" onclick="selPay(this)"><span class="pico">💋</span><span class="pname">亲亲支付</span><span class="dot"></span></div>
+    <div class="field" style="margin-top:12px;">
+      <label>给老公的留言（可选）</label>
+      <input id="fNote" placeholder="例如：少辣、老公辛苦了💕" />
     </div>
+    <div class="oline" style="border:none;font-size:15px;margin-top:4px;"><span>💋 支付方式</span><span style="color:var(--pink);">亲亲支付</span></div>
     <button class="bigpay" onclick="payNow()">💰 立即支付 ¥<span id="payAmount">0</span></button>
   </div>
 </div>
@@ -352,8 +396,12 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- 自定义确认弹窗 -->
+<div id="confirmBg" class="confirm-bg hidden"></div>
+
 <script>
 const CAT_EMOJI={"主食":"🍚","小食":"🍡","饮品":"🧋","甜点":"🍰","其他":"✨"};
+const PAY_NAME="亲亲支付";
 const DEFAULT_MENU=[
   {id:"d1",name:"草莓大福",price:12,cat:"甜点",desc:"软软糯糯超好吃",emoji:"🍓"},
   {id:"d2",name:"芋泥啵啵奶茶",price:16,cat:"饮品",desc:"少糖少冰刚刚好",emoji:"🧋"},
@@ -363,15 +411,18 @@ const DEFAULT_MENU=[
   {id:"d6",name:"抹茶千层",price:26,cat:"甜点",desc:"微苦清香不腻",emoji:"🍰"},
 ];
 let menu=[];
+let menuDirty=false;   // 本地有未同步改动时，云端旧数据不得覆盖本地
 let cart={};            // {id:qty}
+let cardMap={};         // id -> 菜品卡片 DOM，用于按需更新数量、避免整网格重渲染
 let curCat="全部";
-let pendingPay="wechat";
 let pickedImg=null;     // dataURL from merchant form
 let orders=[];          // [{no,items,total,pay,time}]
 
 /* ---------- Supabase 云端同步（老公订单多端共享） ---------- */
 const SB_URL="https://ewviyhdhmkwxmonvdylh.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3dml5aGRobWt3eG1vbnZkeWxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MzExNzksImV4cCI6MjEwMDIwNzE3OX0.X8vEUi37L0blomft4vwTbgIR0iYgOgL7Vij_KQHhy4U";
+// 微信推送：下单后调用的 Supabase Edge Function（函数名 notify-wechat，部署后实际地址为 /super-worker）。留空则不推送
+const WX_PUSH_URL="https://ewviyhdhmkwxmonvdylh.supabase.co/functions/v1/super-worker";
 async function sbFetch(path,opts={}){
   const headers=Object.assign({
     "apikey":SB_KEY,
@@ -391,15 +442,18 @@ async function loadOrdersRemote(){
   return (rows||[]).map(r=>({
     no:r.no, items:r.items||[], total:Number(r.total)||0,
     pay:r.pay||"wechat", time:r.ord_time||new Date(r.created_at).getTime(),
-    done:!!r.done
+    done:!!r.done, note:r.note||""
   }));
 }
 async function saveOrderRemote(o){
-  await sbFetch("orders",{
-    method:"POST",
-    headers:{"Prefer":"return=minimal"},
-    body:JSON.stringify({no:o.no,items:o.items,total:o.total,pay:o.pay,ord_time:o.time,done:!!o.done})
-  });
+  const body={no:o.no,items:o.items,total:o.total,pay:o.pay,ord_time:o.time,done:!!o.done,note:o.note||""};
+  try{
+    await sbFetch("orders",{method:"POST",headers:{"Prefer":"return=minimal"},body:JSON.stringify(body)});
+  }catch(e){
+    // 兜底：若 orders 表还没加 note 列（需跑 alter table），去掉 note 再存一次，保证订单不丢
+    const b2={...body};delete b2.note;
+    await sbFetch("orders",{method:"POST",headers:{"Prefer":"return=minimal"},body:JSON.stringify(b2)});
+  }
 }
 async function updateOrderRemote(no,patch){
   await sbFetch("orders?no=eq."+encodeURIComponent(no),{
@@ -412,19 +466,44 @@ async function deleteOrderRemote(no){
   await sbFetch("orders?no=eq."+encodeURIComponent(no),{method:"DELETE"});
 }
 
-async function loadMenu(){
-  // 本地缓存先读，保证离线/首屏立即可用
+// 本地缓存秒开：先渲染本地菜单，不再干等云端
+function loadMenuLocal(){
   let local=null;
   try{const raw=localStorage.getItem("cute_menu");local=raw?JSON.parse(raw):null;if(!Array.isArray(local))local=null;}catch(e){local=null;}
+  menu=local&&local.length?local:DEFAULT_MENU.slice();
+  cacheLocal();
+}
+// 后台同步云端共享菜单（或把本地推上去建共享），有变化再局部刷新当前页
+async function syncMenuCloud(){
   try{
     const cloud=await loadMenuRemote();
-    if(cloud!==null){menu=cloud;save();return;}   // 云端有共享菜单 → 用云端
-  }catch(e){console.warn("loadMenuRemote failed",e);}
-  menu=local||DEFAULT_MENU.slice();
-  save();                                          // 把本地（或默认）菜单推到云端，建立共享
+    if(cloud!==null){
+      if(menuDirty){           // 本地有未同步的新增/改价/删除，云端旧数据不得覆盖，反手把本地最新推上去
+        save();
+        menuDirty=false;       // push 已发起，标记已同步；下次启动改为以云端为准，支持反向同步
+      }else{
+        menu=cloud;cacheLocal();
+      }
+    }
+    else{save();menuDirty=false;}
+    renderCustomerIfVisible();
+  }catch(e){console.warn("syncMenuCloud failed",e);}
+}
+function renderCustomerIfVisible(){
+  if(!document.getElementById("customerView").classList.contains("hidden"))renderCustomer();
+}
+// 仅写本地缓存：容量不足时自动剔除图片后降级重试，避免直接弹"保存失败"
+function cacheLocal(){
+  try{localStorage.setItem("cute_menu",JSON.stringify(menu));}
+  catch(e){
+    try{
+      const lite=menu.map(d=>d.image?{...d,image:null}:d);
+      localStorage.setItem("cute_menu",JSON.stringify(lite));
+    }catch(e2){console.warn("cacheLocal failed even without images",e2);}
+  }
 }
 function save(){
-  try{localStorage.setItem("cute_menu",JSON.stringify(menu));}catch(e){toast("保存失败：本地存储不可用或已满");}
+  cacheLocal();
   saveMenuRemote();                               // 异步同步云端（失败静默，本地仍可用）
 }
 async function loadMenuRemote(){
@@ -443,6 +522,7 @@ async function saveMenuRemote(){
   }catch(e){console.warn("saveMenuRemote failed",e);}
 }
 async function loadOrders(){try{orders=await loadOrdersRemote();}catch(e){console.warn("loadOrders failed",e);orders=[];}}
+
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1600);}
 
 /* ---------- 视图切换 ---------- */
@@ -488,18 +568,31 @@ function renderChips(){
     box.appendChild(b);
   });
 }
+// 单卡片数量区的 HTML（加入/加减按钮），集中维护避免重复
+function cardRowHtml(d){
+  const q=cart[d.id]||0;
+  return q>0?`<div class="stepper">
+      <button aria-label="减少数量" onclick="changeQty('${d.id}',-1)">−</button>
+      <span>${q}</span>
+      <button aria-label="增加数量" onclick="changeQty('${d.id}',1)">＋</button>
+    </div>`:`<button class="add" aria-label="加入购物车" onclick="changeQty('${d.id}',1)">＋</button>`;
+}
 function renderCustomer(){
   const grid=document.getElementById("dishGrid");
-  const list=curCat==="全部"?menu:menu.filter(d=>d.cat===curCat);
+  const kw=(document.getElementById("dishSearch").value||"").trim().toLowerCase();
+  let list=curCat==="全部"?menu:menu.filter(d=>d.cat===curCat);
+  if(kw)list=list.filter(d=>(d.name||"").toLowerCase().includes(kw)||(d.desc||"").toLowerCase().includes(kw));
   grid.innerHTML="";
+  cardMap={};
   const empty=document.getElementById("custEmpty");
   empty.classList.toggle("hidden",list.length>0);
-  empty.textContent = curCat==="全部"
-    ? "还没有菜品哦，去「添加菜品」添加吧 🍰"
-    : "「"+curCat+"」分类下还没有菜品～";
+  empty.textContent = list.length===0 && kw
+    ? "没有找到「"+(document.getElementById("dishSearch").value.trim())+"」相关的菜～"
+    : (curCat==="全部"
+        ? "还没有菜品哦，去「添加菜品」添加吧 🍰"
+        : "「"+curCat+"」分类下还没有菜品～");
   list.forEach(d=>{
-    const card=document.createElement("div");card.className="card";
-    const q=cart[d.id]||0;
+    const card=document.createElement("div");card.className="card";card.dataset.id=d.id;
     const imgHtml=d.image?`<div class="img"><img src="${d.image}" alt="${escapeHtml(d.name)}"></div>`:`<div class="img"><div>${d.emoji||"🍽️"}</div></div>`;
     card.innerHTML=`
       ${d.cat?`<div class="tag">${CAT_EMOJI[d.cat]||""} ${d.cat}</div>`:""}
@@ -508,20 +601,32 @@ function renderCustomer(){
       <div class="desc">${escapeHtml(d.desc||"")}</div>
       <div class="row">
         <div class="price"><small>¥</small>${d.price}</div>
-        ${q>0?`<div class="stepper">
-            <button onclick="changeQty('${d.id}',-1)">−</button>
-            <span>${q}</span>
-            <button onclick="changeQty('${d.id}',1)">＋</button>
-          </div>`:`<button class="add" onclick="changeQty('${d.id}',1)">＋</button>`}
+        <div class="qwrap">${cardRowHtml(d)}</div>
       </div>`;
     grid.appendChild(card);
+    cardMap[d.id]=card;
   });
   renderCartBar();
+}
+// 数量变化只更新对应卡片的数量区，避免整网格重渲染（图片重新解码会闪、卡顿）
+function updateCardQty(id){
+  const d=menu.find(x=>x.id===id);
+  const card=cardMap[id];
+  if(!card||!d)return;
+  const qw=card.querySelector(".qwrap");
+  if(qw)qw.innerHTML=cardRowHtml(d);
 }
 function changeQty(id,delta){
   cart[id]=(cart[id]||0)+delta;
   if(cart[id]<=0)delete cart[id];
-  renderCustomer();
+  updateCardQty(id);
+  renderCartBar();
+}
+// 搜索做 180ms 防抖，避免每敲一个字都重渲染整网格
+let searchTimer=null;
+function onSearch(){
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(renderCustomer,180);
 }
 function cartItems(){return Object.keys(cart).map(id=>menu.find(d=>d.id===id)).filter(Boolean);}
 function cartTotal(){return cartItems().reduce((s,d)=>s+d.price*(cart[d.id]||0),0);}
@@ -530,7 +635,8 @@ function renderCartBar(){
   const bar=document.getElementById("cartbar");
   const n=cartCount();
   bar.classList.toggle("down",n===0);
-  document.getElementById("customerView").style.paddingBottom="110px";
+  // 仅在有商品时给内容区留白（避开悬浮购物车），空购物车不再留大片空白
+  document.getElementById("customerView").style.paddingBottom=n>0?"110px":"24px";
   document.getElementById("cartBadge").textContent=n;
   document.getElementById("cartTotal").textContent=cartTotal().toFixed(2);
   document.getElementById("cartCount").textContent=n>0?`已选 ${n} 件`:"还没有选菜";
@@ -550,9 +656,60 @@ function openCheckout(){
   document.getElementById("orderTotal").textContent=t;
   document.getElementById("payAmount").textContent=t;
   document.getElementById("checkoutOverlay").classList.remove("hidden");
+  adjustKeyboard();
 }
-function selPay(el){document.querySelectorAll("#payMethods .payopt").forEach(o=>o.classList.remove("sel"));el.classList.add("sel");pendingPay=el.dataset.pay;}
-function closeOverlay(id){document.getElementById(id).classList.add("hidden");}
+function closeOverlay(id){document.getElementById(id).classList.add("hidden");adjustKeyboard();}
+// iOS 键盘避让：弹窗内输入留言时键盘弹出，把表单位置上移，避免被键盘遮挡
+function adjustKeyboard(){
+  if(!window.visualViewport)return;
+  const vv=window.visualViewport;
+  const kb=Math.max(0,(window.innerHeight||document.documentElement.clientHeight)-vv.height-vv.offsetTop);
+  document.querySelectorAll(".sheet").forEach(s=>{
+    const ov=s.closest(".overlay");
+    const visible=ov&&!ov.classList.contains("hidden");
+    s.style.transform=(visible&&kb>0)?("translateY(-"+Math.max(0,kb-12)+"px)"):"";
+  });
+}
+function showConfirm(opts){
+  return new Promise(resolve=>{
+    const bg=document.getElementById("confirmBg");
+    const danger=opts.danger?" danger":"";
+    bg.innerHTML=`
+      <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="cTitle">
+        <div class="ctitle" id="cTitle">${opts.icon||"⚠️"} ${escapeHtml(opts.title||"确认操作")}</div>
+        <div class="cmsg">${escapeHtml(opts.message||"")}</div>
+        <div class="cbtns">
+          <button class="cbtn c-cancel" id="cCancel">${escapeHtml(opts.cancelText||"取消")}</button>
+          <button class="cbtn c-ok${danger}" id="cOk">${escapeHtml(opts.okText||"确定")}</button>
+        </div>
+      </div>`;
+    bg.classList.remove("hidden");
+    const cancel=document.getElementById("cCancel");
+    const ok=document.getElementById("cOk");
+    const prevFocus=document.activeElement;          // 记住打开前的焦点，关闭后归还
+    const focusables=[cancel,ok];
+    const onKey=e=>{
+      if(e.key==="Escape"){e.preventDefault();close(false);return;}
+      if(e.key==="Tab"){                              // 焦点陷阱：Tab/Shift+Tab 在弹窗内循环
+        const idx=focusables.indexOf(document.activeElement);
+        if(e.shiftKey){ if(idx<=0){e.preventDefault();ok.focus();} }
+        else { if(idx>=focusables.length-1){e.preventDefault();cancel.focus();} }
+      }
+    };
+    document.addEventListener("keydown",onKey);
+    bg.onclick=e=>{ if(e.target===bg)close(false); };
+    cancel.onclick=()=>close(false);
+    ok.onclick=()=>close(true);
+    ok.focus();                                       // 打开即把焦点移入弹窗
+    function close(val){
+      bg.classList.add("hidden");
+      bg.onclick=null;
+      document.removeEventListener("keydown",onKey);
+      if(prevFocus&&prevFocus.focus)prevFocus.focus();
+      resolve(val);
+    }
+  });
+}
 function payNow(){
   const btn=document.querySelector("#checkoutOverlay .bigpay");
   btn.textContent="支付中…";btn.disabled=true;
@@ -561,18 +718,24 @@ function payNow(){
     btn.innerHTML='💰 立即支付 ¥<span id="payAmount">'+cartTotal().toFixed(2)+'</span>';
     closeOverlay("checkoutOverlay");
     const no="NO."+Date.now().toString().slice(-8);
-    const payName="亲亲支付";
     // 保存订单到云端（多端同步）
     const items=cartItems().map(d=>({name:d.name,price:d.price,qty:cart[d.id]}));
-    const o={no,items,total:cartTotal(),pay:pendingPay,time:Date.now(),done:false};
+    const note=(document.getElementById("fNote").value||"").trim();
+    const o={no,items,total:cartTotal(),pay:"wechat",time:Date.now(),done:false,note};
     saveOrderRemote(o).catch(()=>toast("云端同步失败，可在「老公订单」重试"));
-    document.getElementById("orderNo").textContent="订单号："+no+" · 支付方式："+payName;
+    // 微信推送：下单后通知老公（需先在 WX_PUSH_URL 填 Edge Function 地址，失败不影响下单）
+    if(WX_PUSH_URL){
+      fetch(WX_PUSH_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({no,items,total:o.total,note:o.note,time:o.time})}).catch(()=>{});
+    }
+    document.getElementById("orderNo").textContent="订单号："+no+" · 支付方式："+PAY_NAME;
     document.getElementById("successOverlay").classList.remove("hidden");
     burstHearts();
   },900);
 }
 function finishPay(){
   document.getElementById("successOverlay").classList.add("hidden");
+  document.getElementById("fNote").value="";
   cart={};renderCustomer();
 }
 function burstHearts(){
@@ -590,17 +753,14 @@ function burstHearts(){
 /* ---------- 商家端 ---------- */
 function onPickImage(e){
   const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const raw=reader.result;
-    const p=document.getElementById("fPreview");
-    p.src=raw;p.classList.remove("hidden");
-    pickedImg=raw;                                   // 先用原图，保证一定能显示（兼容 HEIC 等）
-    if(raw.length>1200000){                          // 体积过大再尝试压缩，省本地存储
-      compressImage(file,compressed=>{pickedImg=compressed;},()=>{pickedImg=raw;});
-    }
-  };
-  reader.readAsDataURL(file);
+  const p=document.getElementById("fPreview");
+  const rm=document.getElementById("fImgRemove");
+  p.classList.remove("hidden");if(rm)rm.classList.remove("hidden");
+  // 始终转 JPEG + 限制尺寸：跨平台可显示（HEIC 仅苹果能看）、体积可控（避免 jsonb 过大）
+  compressImage(file,
+    compressed=>{pickedImg=compressed;p.src=compressed;},
+    raw=>{ if(raw){pickedImg=raw;p.src=raw;} else {pickedImg=null;p.classList.add("hidden");if(rm)rm.classList.add("hidden");} }
+  );
 }
 function compressImage(file,cb,onerr){
   const reader=new FileReader();
@@ -608,19 +768,24 @@ function compressImage(file,cb,onerr){
     const img=new Image();
     img.onload=()=>{
       try{
-        const max=420;let w=img.width,h=img.height;
-        if(w>max){h=Math.round(h*max/w);w=max;}
+        const max=720;let w=img.width,h=img.height;
+        if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
         const c=document.createElement("canvas");c.width=Math.max(1,w);c.height=Math.max(1,h);
         c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-        const outType=(file.type==="image/png")?"image/png":"image/jpeg";
-        cb(c.toDataURL(outType,outType==="image/png"?1:0.7));
-      }catch(err){onerr&&onerr();}
+        cb(c.toDataURL("image/jpeg",0.82));          // 统一 JPEG：去透明、体积小、全平台可读
+      }catch(err){onerr&&onerr(ev.target.result);}
     };
-    img.onerror=()=>{onerr&&onerr();};
+    img.onerror=()=>{onerr&&onerr(ev.target.result);};
     img.src=ev.target.result;
   };
   reader.onerror=()=>{onerr&&onerr();};
   reader.readAsDataURL(file);
+}
+function removePickedImage(){
+  pickedImg=null;
+  const p=document.getElementById("fPreview");p.classList.add("hidden");p.removeAttribute("src");
+  const rm=document.getElementById("fImgRemove");if(rm)rm.classList.add("hidden");
+  const fi=document.getElementById("fImg");if(fi)fi.value="";
 }
 function addDish(){
   const name=document.getElementById("fName").value.trim();
@@ -630,12 +795,13 @@ function addDish(){
   if(!name){toast("给菜品起个名字吧～");return;}
   if(isNaN(price)||price<0){toast("价格要填对哦");return;}
   const d={id:"d"+Date.now(),name,price,cat,desc,image:pickedImg,emoji:CAT_EMOJI[cat]||"🍽️"};
-  menu.unshift(d);save();
+  menu.unshift(d);menuDirty=true;save();
   // reset form
   document.getElementById("fName").value="";
   document.getElementById("fPrice").value="";
   document.getElementById("fDesc").value="";
   document.getElementById("fImg").value="";
+  document.getElementById("fImgRemove").classList.add("hidden");
   pickedImg=null;document.getElementById("fPreview").classList.add("hidden");
   toast("已添加到菜单 💖");
   renderMerchant();
@@ -659,20 +825,34 @@ function renderMerchant(){
 function updatePrice(id,val){
   const p=parseFloat(val);
   if(isNaN(p)||p<0){toast("价格无效");renderMerchant();return;}
-  const d=menu.find(x=>x.id===id);if(d){d.price=p;save();toast("价格已更新 💰");}
+  const d=menu.find(x=>x.id===id);if(d){d.price=p;menuDirty=true;save();toast("价格已更新 💰");}
 }
-function delDish(id){
+async function delDish(id){
+  const d=menu.find(x=>x.id===id);if(!d)return;
+  if(!(await showConfirm({title:"删除菜品",message:"确定删除「"+d.name+"」这道菜吗？",okText:"删除",danger:true})))return;
   menu=menu.filter(x=>x.id!==id);
   delete cart[id];
-  save();renderMerchant();toast("已删除");
+  menuDirty=true;save();renderMerchant();toast("已删除");
 }
+let ordersLoaded=false;
+let lastOrdersFetch=0;
 async function renderOrders(){
   const box=document.getElementById("oList");
   const hbox=document.getElementById("hList");
-  box.innerHTML='<div class="empty">加载中…</div>';
-  hbox.innerHTML='<div class="empty">加载中…</div>';
-  try{orders=await loadOrdersRemote();}catch(e){toast("订单加载失败，请检查网络");}
-  renderOrdersLocal();
+  // 首次加载才显示"加载中"；之后切 tab 只做后台静默刷新，不再闪、离线也不弹
+  if(!ordersLoaded){
+    box.innerHTML='<div class="empty">加载中…</div>';
+    hbox.innerHTML='<div class="empty">加载中…</div>';
+  }else if(Date.now()-lastOrdersFetch<3000){
+    renderOrdersLocal();return;        // 3 秒内已拉过，直接复用本地，省一次请求
+  }
+  try{
+    orders=await loadOrdersRemote();
+    ordersLoaded=true;lastOrdersFetch=Date.now();
+    renderOrdersLocal();
+  }catch(e){
+    if(!ordersLoaded)toast("订单加载失败，请检查网络");  // 已有数据则静默，不反复打扰
+  }
 }
 function renderOrdersLocal(){
   const box=document.getElementById("oList");box.innerHTML="";
@@ -690,13 +870,13 @@ function orderCard(o,isDone){
   card.onclick=()=>showOrderDetail(o);
   const time=new Date(o.time);
   const tstr=(time.getMonth()+1)+"月"+time.getDate()+"日 "+("0"+time.getHours()).slice(-2)+":"+("0"+time.getMinutes()).slice(-2);
-  const payName="亲亲支付";
+  const payName=PAY_NAME;
   const lines=o.items.map(it=>`<div class="oline"><span>${escapeHtml(it.name)} × ${it.qty}</span><span>¥${(it.price*it.qty).toFixed(2)}</span></div>`).join("");
-  let actions=`<button onclick="event.stopPropagation();deleteOrder('${o.no}')" title="删除" style="border:none;background:#FFE0E0;color:#ff7a7a;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">🗑️</button>`;
+  let actions=`<button aria-label="删除订单" onclick="event.stopPropagation();deleteOrder('${o.no}')" title="删除" style="border:none;background:#FFE0E0;color:#ff7a7a;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">🗑️</button>`;
   if(!isDone){
-    actions=`<button onclick="event.stopPropagation();completeOrder('${o.no}')" title="完成此订单" style="border:none;background:#FFE6F0;color:#ff5b8a;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">❤️</button>`+actions;
+    actions=`<button aria-label="完成此订单" onclick="event.stopPropagation();completeOrder('${o.no}')" title="完成此订单" style="border:none;background:#FFE6F0;color:#ff5b8a;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">❤️</button>`+actions;
   }else{
-    actions=`<button onclick="event.stopPropagation();restoreOrder('${o.no}')" title="恢复到老公订单" style="border:none;background:#E6F4FF;color:#3aa0ff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">↩</button>`+actions;
+    actions=`<button aria-label="恢复到老公订单" onclick="event.stopPropagation();restoreOrder('${o.no}')" title="恢复到老公订单" style="border:none;background:#E6F4FF;color:#3aa0ff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">↩</button>`+actions;
   }
   const statusText=isDone
     ? `<span style="font-size:13px;color:#ff5b8a;">已完成 ❤️</span>`
@@ -717,25 +897,26 @@ function orderCard(o,isDone){
     <div class="oline" style="border:none;">
       <span style="font-size:12px;color:#a99;">状态</span>
       ${statusText}
-    </div>`;
+    </div>
+    ${o.note?`<div class="oline" style="border:none;"><span style="font-size:12px;color:#a99;">留言</span><span style="font-size:13px;color:var(--pink);">${escapeHtml(o.note)}</span></div>`:""}`;
   return card;
 }
 async function completeOrder(no){
-  if(!confirm("确定完成这笔订单吗？完成后会移到「历史订单」💗"))return;
+  if(!(await showConfirm({title:"完成订单",message:"确定完成这笔订单吗？完成后会移到「历史订单」💗",okText:"完成 ❤️"})))return;
   const o=orders.find(x=>x.no===no);if(!o)return;
   o.done=true;renderOrdersLocal();
   try{await updateOrderRemote(no,{done:true});toast("完成啦，已放进历史订单 💗");}
   catch(e){toast("同步失败，但已本地标记完成");}
 }
 async function restoreOrder(no){
-  if(!confirm("确定把这笔订单恢复到「老公订单」吗？"))return;
+  if(!(await showConfirm({title:"恢复订单",message:"确定把这笔订单恢复到「老公订单」吗？",okText:"恢复 ↩"})))return;
   const o=orders.find(x=>x.no===no);if(!o)return;
   o.done=false;renderOrdersLocal();
   try{await updateOrderRemote(no,{done:false});toast("已恢复到老公订单 ↩");}
   catch(e){toast("同步失败，但已本地恢复");}
 }
 async function deleteOrder(no){
-  if(!confirm("确定删除这条订单吗？"))return;
+  if(!(await showConfirm({title:"删除订单",message:"确定删除这条订单吗？",okText:"删除",danger:true})))return;
   try{
     await deleteOrderRemote(no);
     orders=orders.filter(x=>x.no!==no);
@@ -747,7 +928,7 @@ function showOrderDetail(o){
   const box=document.getElementById("orderDetailContent");box.innerHTML="";
   const time=new Date(o.time);
   const tstr=(time.getMonth()+1)+"月"+time.getDate()+"日 "+("0"+time.getHours()).slice(-2)+":"+("0"+time.getMinutes()).slice(-2);
-  const payName="亲亲支付";
+  const payName=PAY_NAME;
   let html=`
     <div class="oline" style="border:none;font-size:14px;">
       <span style="color:#a99;">订单号</span>
@@ -770,26 +951,37 @@ function showOrderDetail(o){
       <span>合计</span>
       <span style="color:var(--pink);font-weight:bold;">¥${o.total.toFixed(2)}</span>
     </div>`;
+  if(o.note)html+=`<div class="oline" style="border:none;margin-top:6px;"><span style="color:#a99;font-size:14px;">留言</span><span style="color:var(--pink);font-size:14px;">${escapeHtml(o.note)}</span></div>`;
   box.innerHTML=html;
   document.getElementById("orderDetailOverlay").classList.remove("hidden");
+  adjustKeyboard();
 }
-/* 下载菜单图片功能已移除 */
-
 /* ---------- util ---------- */
 function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
 /* init */
 (async function init(){
-  await loadMenu();      // 先拉共享菜单（含云端同步）
-  await loadOrders();    // 再拉老公订单
+  loadMenuLocal();                  // 本地缓存秒开，不等云端
   switchView("customer");
   setViewportHeight();
   fitScreens();
+  document.getElementById("appLoading").classList.add("hidden");   // 本地已渲染，收起启动遮罩
+  const hint=document.getElementById("syncHint");if(hint)hint.classList.remove("hidden");
+  await Promise.all([loadOrders(),syncMenuCloud()]);             // 后台同步云端
+  if(hint)hint.classList.add("hidden");
 })();
 function onViewportChange(){setViewportHeight();fitScreens();}
 window.addEventListener("resize",onViewportChange);
 window.addEventListener("orientationchange",onViewportChange);
-if(window.visualViewport)window.visualViewport.addEventListener("resize",onViewportChange);
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize",onViewportChange);
+  window.visualViewport.addEventListener("resize",adjustKeyboard);
+  window.visualViewport.addEventListener("scroll",adjustKeyboard);
+}
+// 无障碍：Esc 关闭任意打开的弹窗
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")document.querySelectorAll(".overlay:not(.hidden)").forEach(o=>o.classList.add("hidden"));
+});
 </script>
 </body>
 </html>
