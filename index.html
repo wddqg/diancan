@@ -412,9 +412,36 @@ async function deleteOrderRemote(no){
   await sbFetch("orders?no=eq."+encodeURIComponent(no),{method:"DELETE"});
 }
 
-function load(){try{const raw=localStorage.getItem("cute_menu");menu=raw?JSON.parse(raw):null;if(!Array.isArray(menu))menu=null;}catch(e){menu=null;}
-  if(!menu){menu=DEFAULT_MENU.slice();save();}}
-function save(){try{localStorage.setItem("cute_menu",JSON.stringify(menu));}catch(e){toast("保存失败：本地存储不可用或已满");}}
+async function loadMenu(){
+  // 本地缓存先读，保证离线/首屏立即可用
+  let local=null;
+  try{const raw=localStorage.getItem("cute_menu");local=raw?JSON.parse(raw):null;if(!Array.isArray(local))local=null;}catch(e){local=null;}
+  try{
+    const cloud=await loadMenuRemote();
+    if(cloud!==null){menu=cloud;save();return;}   // 云端有共享菜单 → 用云端
+  }catch(e){console.warn("loadMenuRemote failed",e);}
+  menu=local||DEFAULT_MENU.slice();
+  save();                                          // 把本地（或默认）菜单推到云端，建立共享
+}
+function save(){
+  try{localStorage.setItem("cute_menu",JSON.stringify(menu));}catch(e){toast("保存失败：本地存储不可用或已满");}
+  saveMenuRemote();                               // 异步同步云端（失败静默，本地仍可用）
+}
+async function loadMenuRemote(){
+  const rows=await sbFetch("menu?select=*&limit=1");
+  if(rows&&rows.length)return (rows[0].data||[]); // 行存在 → 返回其中的菜单（可能为空数组）
+  return null;                                    // 还没有共享菜单行
+}
+async function saveMenuRemote(){
+  if(!Array.isArray(menu))return;
+  try{
+    await sbFetch("menu?on_conflict=id",{
+      method:"POST",
+      headers:{"Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({id:"shared",data:menu,updated_at:new Date().toISOString()})
+    });
+  }catch(e){console.warn("saveMenuRemote failed",e);}
+}
 async function loadOrders(){try{orders=await loadOrdersRemote();}catch(e){console.warn("loadOrders failed",e);orders=[];}}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1600);}
 
@@ -563,25 +590,36 @@ function burstHearts(){
 /* ---------- 商家端 ---------- */
 function onPickImage(e){
   const file=e.target.files[0];if(!file)return;
-  compressImage(file,dataUrl=>{
-    pickedImg=dataUrl;
-    const p=document.getElementById("fPreview");p.src=dataUrl;p.classList.remove("hidden");
-  });
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const raw=reader.result;
+    const p=document.getElementById("fPreview");
+    p.src=raw;p.classList.remove("hidden");
+    pickedImg=raw;                                   // 先用原图，保证一定能显示（兼容 HEIC 等）
+    if(raw.length>1200000){                          // 体积过大再尝试压缩，省本地存储
+      compressImage(file,compressed=>{pickedImg=compressed;},()=>{pickedImg=raw;});
+    }
+  };
+  reader.readAsDataURL(file);
 }
-function compressImage(file,cb){
+function compressImage(file,cb,onerr){
   const reader=new FileReader();
   reader.onload=ev=>{
     const img=new Image();
     img.onload=()=>{
-      const max=420;let{w,h}=img;
-      if(w>max){h=h*max/w;w=max;}
-      const c=document.createElement("canvas");c.width=w;c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      const outType=(file.type==="image/png")?"image/png":"image/jpeg";
-      cb(c.toDataURL(outType,outType==="image/png"?1:0.7));
+      try{
+        const max=420;let w=img.width,h=img.height;
+        if(w>max){h=Math.round(h*max/w);w=max;}
+        const c=document.createElement("canvas");c.width=Math.max(1,w);c.height=Math.max(1,h);
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+        const outType=(file.type==="image/png")?"image/png":"image/jpeg";
+        cb(c.toDataURL(outType,outType==="image/png"?1:0.7));
+      }catch(err){onerr&&onerr();}
     };
+    img.onerror=()=>{onerr&&onerr();};
     img.src=ev.target.result;
   };
+  reader.onerror=()=>{onerr&&onerr();};
   reader.readAsDataURL(file);
 }
 function addDish(){
@@ -741,11 +779,13 @@ function showOrderDetail(o){
 function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
 /* init */
-load();
-loadOrders();
-switchView("customer");
-setViewportHeight();
-fitScreens();
+(async function init(){
+  await loadMenu();      // 先拉共享菜单（含云端同步）
+  await loadOrders();    // 再拉老公订单
+  switchView("customer");
+  setViewportHeight();
+  fitScreens();
+})();
 function onViewportChange(){setViewportHeight();fitScreens();}
 window.addEventListener("resize",onViewportChange);
 window.addEventListener("orientationchange",onViewportChange);
