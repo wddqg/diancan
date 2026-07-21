@@ -246,6 +246,7 @@
     <div class="switch">
       <button id="btnCust" class="active" onclick="switchView('customer')">🛒 老婆点菜</button>
       <button id="btnOrder" onclick="switchView('order')">📋 老公订单</button>
+      <button id="btnHistory" onclick="switchView('history')">📜 历史订单</button>
       <button id="btnMer" onclick="switchView('merchant')">🛠️ 添加菜品</button>
     </div>
   </div>
@@ -297,10 +298,12 @@
 
   <!-- 订单视图 -->
   <div id="orderView" class="screen hidden">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-      <button onclick="clearOrders()" style="border:none;background:var(--pink-soft);color:var(--pink);padding:6px 14px;border-radius:14px;font-family:inherit;font-size:13px;cursor:pointer;">🗑️ 清除历史</button>
-    </div>
     <div id="oList"></div>
+  </div>
+
+  <!-- 历史订单视图 -->
+  <div id="historyView" class="screen hidden">
+    <div id="hList"></div>
   </div>
 
   <!-- 购物车栏 -->
@@ -343,7 +346,7 @@
   <div class="sheet">
     <h3>📋 订单详情</h3>
     <div id="orderDetailContent"></div>
-    <button class="bigpay" onclick="downloadCurrentOrder()" style="margin-top:14px;">📥 下载菜单图片</button>
+    <button class="bigpay" onclick="closeOverlay('orderDetailOverlay')" style="margin-top:14px;">完成 ✓</button>
   </div>
 </div>
 
@@ -366,11 +369,53 @@ let pendingPay="wechat";
 let pickedImg=null;     // dataURL from merchant form
 let orders=[];          // [{no,items,total,pay,time}]
 
+/* ---------- Supabase 云端同步（老公订单多端共享） ---------- */
+const SB_URL="https://ewviyhdhmkwxmonvdylh.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3dml5aGRobWt3eG1vbnZkeWxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MzExNzksImV4cCI6MjEwMDIwNzE3OX0.X8vEUi37L0blomft4vwTbgIR0iYgOgL7Vij_KQHhy4U";
+async function sbFetch(path,opts={}){
+  const headers=Object.assign({
+    "apikey":SB_KEY,
+    "Authorization":"Bearer "+SB_KEY,
+    "Content-Type":"application/json"
+  },opts.headers||{});
+  const res=await fetch(SB_URL+"/rest/v1/"+path,{...opts,headers});
+  if(!res.ok)throw new Error("SB "+res.status);
+  // 204(DELETE) / 201(return=minimal) 均无响应体，不可 json 解析，否则抛错误报失败
+  if(res.status===204||res.status===201)return null;
+  const ct=res.headers.get("content-type")||"";
+  if(!ct.includes("application/json"))return null;
+  return res.json();
+}
+async function loadOrdersRemote(){
+  const rows=await sbFetch("orders?select=*&order=created_at.desc");
+  return (rows||[]).map(r=>({
+    no:r.no, items:r.items||[], total:Number(r.total)||0,
+    pay:r.pay||"wechat", time:r.ord_time||new Date(r.created_at).getTime(),
+    done:!!r.done
+  }));
+}
+async function saveOrderRemote(o){
+  await sbFetch("orders",{
+    method:"POST",
+    headers:{"Prefer":"return=minimal"},
+    body:JSON.stringify({no:o.no,items:o.items,total:o.total,pay:o.pay,ord_time:o.time,done:!!o.done})
+  });
+}
+async function updateOrderRemote(no,patch){
+  await sbFetch("orders?no=eq."+encodeURIComponent(no),{
+    method:"PATCH",
+    headers:{"Prefer":"return=minimal"},
+    body:JSON.stringify(patch)
+  });
+}
+async function deleteOrderRemote(no){
+  await sbFetch("orders?no=eq."+encodeURIComponent(no),{method:"DELETE"});
+}
+
 function load(){try{const raw=localStorage.getItem("cute_menu");menu=raw?JSON.parse(raw):null;if(!Array.isArray(menu))menu=null;}catch(e){menu=null;}
   if(!menu){menu=DEFAULT_MENU.slice();save();}}
 function save(){try{localStorage.setItem("cute_menu",JSON.stringify(menu));}catch(e){toast("保存失败：本地存储不可用或已满");}}
-function loadOrders(){try{const raw=localStorage.getItem("cute_orders");orders=raw?JSON.parse(raw):[];}catch(e){orders=[];}}
-function saveOrders(){try{localStorage.setItem("cute_orders",JSON.stringify(orders));}catch(e){}}
+async function loadOrders(){try{orders=await loadOrdersRemote();}catch(e){console.warn("loadOrders failed",e);orders=[];}}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1600);}
 
 /* ---------- 视图切换 ---------- */
@@ -378,8 +423,10 @@ function switchView(v){
   document.getElementById("customerView").classList.toggle("hidden",v!=="customer");
   document.getElementById("merchantView").classList.toggle("hidden",v!=="merchant");
   document.getElementById("orderView").classList.toggle("hidden",v!=="order");
+  document.getElementById("historyView").classList.toggle("hidden",v!=="history");
   document.getElementById("btnCust").classList.toggle("active",v==="customer");
   document.getElementById("btnOrder").classList.toggle("active",v==="order");
+  document.getElementById("btnHistory").classList.toggle("active",v==="history");
   document.getElementById("btnMer").classList.toggle("active",v==="merchant");
   document.getElementById("cartbar").classList.toggle("hidden",v!=="customer");
   if(v==="customer"){renderChips();renderCustomer();}
@@ -488,10 +535,10 @@ function payNow(){
     closeOverlay("checkoutOverlay");
     const no="NO."+Date.now().toString().slice(-8);
     const payName="亲亲支付";
-    // 保存订单
+    // 保存订单到云端（多端同步）
     const items=cartItems().map(d=>({name:d.name,price:d.price,qty:cart[d.id]}));
-    orders.unshift({no,items,total:cartTotal(),pay:pendingPay,time:Date.now()});
-    saveOrders();
+    const o={no,items,total:cartTotal(),pay:pendingPay,time:Date.now(),done:false};
+    saveOrderRemote(o).catch(()=>toast("云端同步失败，可在「老公订单」重试"));
     document.getElementById("orderNo").textContent="订单号："+no+" · 支付方式："+payName;
     document.getElementById("successOverlay").classList.remove("hidden");
     burstHearts();
@@ -581,42 +628,84 @@ function delDish(id){
   delete cart[id];
   save();renderMerchant();toast("已删除");
 }
-function renderOrders(){
+async function renderOrders(){
+  const box=document.getElementById("oList");
+  const hbox=document.getElementById("hList");
+  box.innerHTML='<div class="empty">加载中…</div>';
+  hbox.innerHTML='<div class="empty">加载中…</div>';
+  try{orders=await loadOrdersRemote();}catch(e){toast("订单加载失败，请检查网络");}
+  renderOrdersLocal();
+}
+function renderOrdersLocal(){
   const box=document.getElementById("oList");box.innerHTML="";
-  if(orders.length===0){box.innerHTML='<div class="empty">还没有订单哦，快去点菜吧 🍰</div>';return;}
-  orders.forEach(o=>{
-    const card=document.createElement("div");card.className="formcard";
-    card.style.cursor="pointer";
-    card.onclick=()=>showOrderDetail(o);
-    const time=new Date(o.time);
-    const tstr=(time.getMonth()+1)+"月"+time.getDate()+"日 "+("0"+time.getHours()).slice(-2)+":"+("0"+time.getMinutes()).slice(-2);
-    const payName="亲亲支付";
-    const lines=o.items.map(it=>`<div class="oline"><span>${escapeHtml(it.name)} × ${it.qty}</span><span>¥${(it.price*it.qty).toFixed(2)}</span></div>`).join("");
-    card.innerHTML=`
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <b style="color:var(--lav);font-size:14px;">${escapeHtml(o.no)}</b>
+  const hbox=document.getElementById("hList");hbox.innerHTML="";
+  const active=orders.filter(o=>!o.done);
+  const done=orders.filter(o=>o.done);
+  if(active.length===0){box.innerHTML='<div class="empty">还没有订单哦，快去点菜吧 🍰</div>';}
+  else active.forEach(o=>box.appendChild(orderCard(o,false)));
+  if(done.length===0){hbox.innerHTML='<div class="empty">还没有完成的订单～<br>在「老公订单」点 ❤️ 完成它吧 💗</div>';}
+  else done.forEach(o=>hbox.appendChild(orderCard(o,true)));
+}
+function orderCard(o,isDone){
+  const card=document.createElement("div");card.className="formcard";
+  card.style.cursor="pointer";
+  card.onclick=()=>showOrderDetail(o);
+  const time=new Date(o.time);
+  const tstr=(time.getMonth()+1)+"月"+time.getDate()+"日 "+("0"+time.getHours()).slice(-2)+":"+("0"+time.getMinutes()).slice(-2);
+  const payName="亲亲支付";
+  const lines=o.items.map(it=>`<div class="oline"><span>${escapeHtml(it.name)} × ${it.qty}</span><span>¥${(it.price*it.qty).toFixed(2)}</span></div>`).join("");
+  let actions=`<button onclick="event.stopPropagation();deleteOrder('${o.no}')" title="删除" style="border:none;background:#FFE0E0;color:#ff7a7a;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">🗑️</button>`;
+  if(!isDone){
+    actions=`<button onclick="event.stopPropagation();completeOrder('${o.no}')" title="完成此订单" style="border:none;background:#FFE6F0;color:#ff5b8a;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">❤️</button>`+actions;
+  }else{
+    actions=`<button onclick="event.stopPropagation();restoreOrder('${o.no}')" title="恢复到老公订单" style="border:none;background:#E6F4FF;color:#3aa0ff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex:0 0 auto;line-height:1;">↩</button>`+actions;
+  }
+  const statusText=isDone
+    ? `<span style="font-size:13px;color:#ff5b8a;">已完成 ❤️</span>`
+    : `<span style="font-size:13px;color:var(--mint);">已支付 ✓</span>`;
+  card.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b style="color:var(--lav);font-size:14px;">${escapeHtml(o.no)}</b>
+      <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:12px;color:#bba;">${tstr} · ${payName}</span>
+        ${actions}
       </div>
-      ${lines}
-      <div class="oline" style="border:none;font-size:17px;margin-top:4px;">
-        <span>合计</span>
-        <span style="color:var(--pink)">¥${o.total.toFixed(2)}</span>
-      </div>
-      <div class="oline" style="border:none;">
-        <span style="font-size:12px;color:#a99;">状态</span>
-        <span style="font-size:13px;color:var(--mint);">已支付 ✓</span>
-      </div>`;
-    box.appendChild(card);
-  });
+    </div>
+    ${lines}
+    <div class="oline" style="border:none;font-size:17px;margin-top:4px;">
+      <span>合计</span>
+      <span style="color:var(--pink)">¥${o.total.toFixed(2)}</span>
+    </div>
+    <div class="oline" style="border:none;">
+      <span style="font-size:12px;color:#a99;">状态</span>
+      ${statusText}
+    </div>`;
+  return card;
 }
-function clearOrders(){
-  if(orders.length===0){toast("还没有订单哦");return;}
-  if(!confirm("确定要清除所有历史订单吗？"))return;
-  orders=[];saveOrders();renderOrders();toast("历史订单已清除");
+async function completeOrder(no){
+  if(!confirm("确定完成这笔订单吗？完成后会移到「历史订单」💗"))return;
+  const o=orders.find(x=>x.no===no);if(!o)return;
+  o.done=true;renderOrdersLocal();
+  try{await updateOrderRemote(no,{done:true});toast("完成啦，已放进历史订单 💗");}
+  catch(e){toast("同步失败，但已本地标记完成");}
 }
-let viewingOrder=null;
+async function restoreOrder(no){
+  if(!confirm("确定把这笔订单恢复到「老公订单」吗？"))return;
+  const o=orders.find(x=>x.no===no);if(!o)return;
+  o.done=false;renderOrdersLocal();
+  try{await updateOrderRemote(no,{done:false});toast("已恢复到老公订单 ↩");}
+  catch(e){toast("同步失败，但已本地恢复");}
+}
+async function deleteOrder(no){
+  if(!confirm("确定删除这条订单吗？"))return;
+  try{
+    await deleteOrderRemote(no);
+    orders=orders.filter(x=>x.no!==no);
+    renderOrdersLocal();
+    toast("已删除 🗑️");
+  }catch(e){toast("删除失败，请检查网络");}
+}
 function showOrderDetail(o){
-  viewingOrder=o;
   const box=document.getElementById("orderDetailContent");box.innerHTML="";
   const time=new Date(o.time);
   const tstr=(time.getMonth()+1)+"月"+time.getDate()+"日 "+("0"+time.getHours()).slice(-2)+":"+("0"+time.getMinutes()).slice(-2);
@@ -646,78 +735,7 @@ function showOrderDetail(o){
   box.innerHTML=html;
   document.getElementById("orderDetailOverlay").classList.remove("hidden");
 }
-function downloadCurrentOrder(){if(viewingOrder)downloadOrderImage(viewingOrder);}
-function downloadOrderImage(o){
-  const W=500;
-  const itemH=o.items.length*34;
-  const H=Math.max(400,280+itemH+90);
-  const c=document.createElement("canvas");c.width=W;c.height=H;
-  const ctx=c.getContext("2d");
-  const grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,"#FFF6E9");grad.addColorStop(1,"#FFFDFB");
-  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle="#FF9EBB";ctx.lineWidth=5;
-  const R=24;
-  ctx.beginPath();ctx.moveTo(R,15);
-  ctx.lineTo(W-R,15);ctx.quadraticCurveTo(W-15,15,W-15,R);
-  ctx.lineTo(W-15,H-R);ctx.quadraticCurveTo(W-15,H-15,W-R,H-15);
-  ctx.lineTo(R,H-15);ctx.quadraticCurveTo(15,H-15,15,H-R);
-  ctx.lineTo(15,R);ctx.quadraticCurveTo(15,15,R,15);
-  ctx.closePath();ctx.stroke();
-  const fontF="'ZCOOL KuaiLe','PingFang SC','Microsoft YaHei',sans-serif";
-  ctx.fillStyle="#FF9EBB";ctx.font="bold 28px "+fontF;
-  ctx.textAlign="center";ctx.fillText("🍡 老婆小饭桌",W/2,60);
-  ctx.fillStyle="#5A4A52";ctx.font="16px "+fontF;
-  ctx.fillText("—— 订单详情 ——",W/2,88);
-  ctx.textAlign="left";ctx.font="13px "+fontF;ctx.fillStyle="#a99";
-  const time=new Date(o.time);const payName="亲亲支付";
-  const tstr2=(time.getMonth()+1)+"月"+time.getDate()+"日 "+("0"+time.getHours()).slice(-2)+":"+("0"+time.getMinutes()).slice(-2);
-  ctx.fillText("订单号: "+o.no,35,125);ctx.fillText(tstr2+" · "+payName,35,148);
-  ctx.strokeStyle="#FFE3EC";ctx.lineWidth=2;ctx.setLineDash([5,5]);
-  ctx.beginPath();ctx.moveTo(35,167);ctx.lineTo(W-35,167);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle="#C9B6E4";ctx.font="14px "+fontF;
-  ctx.fillText("菜品",35,198);ctx.textAlign="right";ctx.fillText("金额",W-35,198);ctx.textAlign="left";
-  let y=205;
-  o.items.forEach(it=>{
-    y+=30;ctx.fillStyle="#5A4A52";ctx.font="15px "+fontF;
-    ctx.fillText(it.name+" × "+it.qty,35,y);
-    ctx.textAlign="right";ctx.fillStyle="#FF9EBB";ctx.font="bold 15px "+fontF;
-    ctx.fillText("¥"+(it.price*it.qty).toFixed(2),W-35,y);ctx.textAlign="left";
-  });
-  y+=15;ctx.strokeStyle="#FFE3EC";ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(35,y);ctx.lineTo(W-35,y);ctx.stroke();
-  y+=30;
-  ctx.fillStyle="#5A4A52";ctx.font="16px "+fontF;
-  ctx.fillText("合计",35,y);
-  ctx.textAlign="right";ctx.fillStyle="#FF9EBB";ctx.font="bold 22px "+fontF;
-  ctx.fillText("¥"+o.total.toFixed(2),W-35,y);
-  ctx.textAlign="center";ctx.fillStyle="#bba";ctx.font="13px "+fontF;
-  ctx.fillText("—— 感谢惠顾，祝您用餐愉快 🍰 ——",W/2,H-38);
-  // 替换下载按钮为图片预览，避免重复点击追加
-  c.toBlob(blob=>{
-    const url=URL.createObjectURL(blob);
-    const btn=document.querySelector("#orderDetailOverlay .bigpay");
-    if(btn){
-      const wrap=document.createElement("div");
-      wrap.style.cssText="margin-top:14px;text-align:center;";
-      wrap.innerHTML=`
-        <img src="${url}" style="width:100%;border-radius:16px;box-shadow:var(--shadow);" alt="菜单图片">
-        <p style="font-size:13px;color:#8a7a7a;margin:12px 0;line-height:1.6;">
-          📱 <b>长按图片</b> 保存到相册<br>
-          💻 电脑端可右键图片另存
-        </p>
-        <button class="bigpay" onclick="triggerDownload('${url}','${o.no}')" style="margin-top:4px;">📥 下载图片</button>
-        <button class="bigpay" onclick="closeOverlay('orderDetailOverlay')" style="margin-top:8px;background:var(--mint);">完成 ✓</button>`;
-      btn.replaceWith(wrap);
-    }
-  },"image/jpeg",0.92);
-}
-function triggerDownload(url,no){
-  const a=document.createElement("a");a.href=url;
-  a.download=no+"_菜单.jpg";document.body.appendChild(a);
-  a.click();document.body.removeChild(a);
-  toast("下载已开始 📥");
-}
+/* 下载菜单图片功能已移除 */
 
 /* ---------- util ---------- */
 function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
