@@ -41,13 +41,13 @@
     display:grid;
     grid-template-rows:auto 1fr;
   }
-  /* floating decorations */
-  .deco{position:absolute;font-size:26px;opacity:.55;pointer-events:none;animation:float 6s ease-in-out infinite;z-index:2;}
-  .deco.d1{top:60px;left:14px;animation-delay:0s;}
-  .deco.d2{top:120px;right:18px;animation-delay:1.2s;}
+  /* floating decorations: 浮在最上层飘动（pointer-events:none 不挡交互），让装饰可见 */
+  .deco{position:absolute;font-size:26px;opacity:.5;pointer-events:none;animation:float 6s ease-in-out infinite;z-index:12;}
+  .deco.d1{top:70px;left:14px;animation-delay:0s;}
+  .deco.d2{top:130px;right:16px;animation-delay:1.2s;}
   .deco.d3{top:300px;left:10px;animation-delay:2.1s;}
-  .deco.d4{top:430px;right:14px;animation-delay:.6s;}
-  @keyframes float{0%,100%{transform:translateY(0) rotate(-6deg);}50%{transform:translateY(-12px) rotate(6deg);}}
+  .deco.d4{top:420px;right:14px;animation-delay:.6s;}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(-6deg);}50%{transform:translateY(-10px) rotate(6deg);}}
 
   /* top bar */
   .topbar{
@@ -140,6 +140,16 @@
   .checkout:active{transform:scale(.95);}
   .cart-ico{position:relative;font-size:30px;}
   .badge{position:absolute;top:-6px;right:-8px;background:var(--peach);color:#fff;font-size:11px;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+  /* 购物车栏左侧可点击区域：点开购物车详情 */
+  .cart-trigger{
+    flex:1;display:flex;align-items:center;gap:12px;cursor:pointer;
+    background:none;border:none;padding:6px 4px;margin:-6px -4px;
+    font-family:inherit;color:inherit;text-align:left;min-width:0;border-radius:14px;
+    transition:background .15s;
+  }
+  .cart-trigger:active{background:var(--pink-soft);transform:scale(.99);}
+  .cart-trigger::after{content:"▾";color:var(--lav);font-size:12px;opacity:.55;margin-left:auto;flex:none;transition:transform .2s;}
+  .cartbar.up .cart-trigger::after{transform:rotate(180deg);}
 
   /* merchant form */
   .formcard{background:#fff;border-radius:22px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px;}
@@ -194,7 +204,7 @@
   .mlist .mimg{width:54px;height:54px;border-radius:14px;object-fit:cover;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:28px;flex:0 0 auto;}
   /* 无图菜品：按菜名智能生成的粉彩渐变可爱图案 */
   .em{display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);border-radius:50%;box-shadow:0 3px 8px rgba(0,0,0,.07);line-height:1;}
-  .card .img .em{width:66px;height:66px;font-size:34px;}
+  .card .img .em{width:108px;height:108px;font-size:58px;}
   .mlist .mimg .em{width:38px;height:38px;font-size:22px;}
   .mlist .minfo{flex:1;min-width:0;}
   .mlist .mname{font-size:15px;}
@@ -222,6 +232,21 @@
   .oline{display:flex;justify-content:space-between;padding:9px 2px;border-bottom:1px dashed var(--pink-soft);font-size:15px;}
   .bigpay{width:100%;border:none;cursor:pointer;font-family:inherit;font-size:18px;color:#fff;background:linear-gradient(135deg,var(--pink),var(--lav));padding:14px;border-radius:20px;box-shadow:var(--shadow-lg);}
   .bigpay:active{transform:scale(.97);}
+
+  /* 购物车详情弹窗里的商品行 */
+  .cart-row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px dashed var(--pink-soft);}
+  .cart-row:last-child{border-bottom:none;}
+  .cr-emoji{font-size:30px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:var(--cream);border-radius:14px;flex:none;line-height:1;}
+  .cr-info{flex:1;min-width:0;}
+  .cr-name{font-size:15px;color:var(--ink);font-weight:600;line-height:1.25;word-break:break-all;}
+  .cr-price{font-size:12px;color:#a99;margin-top:3px;}
+  .cr-stepper{display:flex;align-items:center;gap:6px;flex:none;}
+  .cr-stepper button{width:30px;height:30px;border-radius:50%;border:none;background:var(--pink-soft);color:var(--pink);font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;transition:.12s;}
+  .cr-stepper button:active{transform:scale(.88);background:var(--pink);color:#fff;}
+  .cr-stepper span{min-width:20px;text-align:center;font-size:14px;color:var(--ink);font-weight:600;}
+  .cr-del{margin-left:4px;width:30px;height:30px;border-radius:50%;border:none;background:#FFE0E0;color:#ff7a7a;font-size:14px;cursor:pointer;flex:none;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;transition:.12s;}
+  .cr-del:active{transform:scale(.88);background:#ff7a7a;color:#fff;}
+  .cart-empty{padding:30px 10px;text-align:center;color:#a99;font-size:14px;}
 
   /* 自定义确认弹窗 */
   .confirm-bg{
@@ -377,14 +402,26 @@
     <div id="hList"></div>
   </div>
 
-  <!-- 购物车栏 -->
+  <!-- 购物车栏（左侧可点开详情，右侧去结算） -->
   <div id="cartbar" class="cartbar down">
-    <div class="cart-ico">🛒<span class="badge" id="cartBadge">0</span></div>
-    <div class="info">
-      <div class="total">¥<span id="cartTotal">0</span></div>
-      <div class="count" id="cartCount">还没有选菜</div>
-    </div>
+    <button type="button" class="cart-trigger" onclick="openCartDetail()" aria-label="查看购物车详情">
+      <div class="cart-ico">🛒<span class="badge" id="cartBadge">0</span></div>
+      <div class="info">
+        <div class="total">¥<span id="cartTotal">0</span></div>
+        <div class="count" id="cartCount">还没有选菜</div>
+      </div>
+    </button>
     <button class="checkout" onclick="openCheckout()">去结算 →</button>
+  </div>
+
+  <!-- 购物车详情弹窗（点开查看/调整每件数量） -->
+  <div id="cartOverlay" class="overlay hidden" onclick="if(event.target===this)closeOverlay('cartOverlay')">
+    <div class="sheet">
+      <h3>🛒 我的购物车</h3>
+      <div id="cartLines"></div>
+      <div class="oline" style="border:none;font-size:17px;margin-top:6px;"><span>合计</span><span style="color:var(--pink)">¥<span id="cartDetailTotal">0</span></span></div>
+      <button class="bigpay" style="margin-top:14px;" onclick="closeOverlay('cartOverlay');openCheckout();">💰 去结算 →</button>
+    </div>
   </div>
 </div>
 
@@ -501,7 +538,20 @@ async function saveWxPush(enabled){
     });
   }catch(e){toast("通知开关同步失败，可重试");console.warn("saveWxPush failed",e);}
 }
-function onWxPushToggle(){wxPushEnabled=document.getElementById("wxPushToggle").checked;saveWxPush(wxPushEnabled);}
+let _lastWxPush=null;   // 记录上一次云端读取的通知开关值，用于轻量轮询判断变化
+function onWxPushToggle(){wxPushEnabled=document.getElementById("wxPushToggle").checked;saveWxPush(wxPushEnabled);_lastWxPush=wxPushEnabled;}
+// 轻量轮询：仅同步「公众号通知开关」这一行（每 15s 一次极小 GET），让两台手机设置实时一致
+async function pollWxPushSetting(){
+  try{
+    const v=await loadWxPush();
+    if(_lastWxPush!==null && v!==_lastWxPush){
+      wxPushEnabled=v;
+      const t=document.getElementById("wxPushToggle"); if(t)t.checked=v;
+      toast(v?"已开启公众号下单通知":"已关闭公众号下单通知");
+    }
+    _lastWxPush=v;
+  }catch(e){/* 静默失败，下次轮询再试 */}
+}
 async function sbFetch(path,opts={}){
   const headers=Object.assign({
     "apikey":SB_KEY,
@@ -718,6 +768,9 @@ function renderCartBar(){
   document.getElementById("cartBadge").textContent=n;
   document.getElementById("cartTotal").textContent=cartTotal().toFixed(2);
   document.getElementById("cartCount").textContent=n>0?`已选 ${n} 件`:"还没有选菜";
+  // 购物车详情弹窗开着时，实时同步列表与合计
+  const co=document.getElementById("cartOverlay");
+  if(co && !co.classList.contains("hidden"))renderCartDetail();
 }
 
 /* ---------- 结算 / 支付 ---------- */
@@ -737,6 +790,44 @@ function openCheckout(){
   adjustKeyboard();
 }
 function closeOverlay(id){document.getElementById(id).classList.add("hidden");adjustKeyboard();}
+/* ---------- 购物车详情（点开购物车栏查看/调整每件数量） ---------- */
+function openCartDetail(){
+  if(cartCount()===0){toast("还没有选菜，先去点点吧～");return;}
+  renderCartDetail();
+  document.getElementById("cartOverlay").classList.remove("hidden");
+  adjustKeyboard();
+}
+function renderCartDetail(){
+  // 删空时直接关弹窗，避免显示空购物车
+  if(cartCount()===0){
+    const co=document.getElementById("cartOverlay");
+    if(!co.classList.contains("hidden")){co.classList.add("hidden");toast("购物车已清空～");}
+    return;
+  }
+  const lines=document.getElementById("cartLines");lines.innerHTML="";
+  cartItems().forEach(d=>{
+    const q=cart[d.id];
+    const imgPart=d.image
+      ? `<img src="${d.image}" alt="" style="width:48px;height:48px;border-radius:14px;object-fit:cover;flex:none;">`
+      : `<div class="cr-emoji">${escapeHtml(d.emoji||"🍽️")}</div>`;
+    const row=document.createElement("div");row.className="cart-row";
+    row.innerHTML=`
+      ${imgPart}
+      <div class="cr-info">
+        <div class="cr-name">${escapeHtml(d.name)}</div>
+        <div class="cr-price">¥${d.price.toFixed(2)}</div>
+      </div>
+      <div class="cr-stepper">
+        <button onclick="changeQty('${d.id}',-1)" aria-label="减少一份">−</button>
+        <span>${q}</span>
+        <button onclick="changeQty('${d.id}',1)" aria-label="加一份">＋</button>
+      </div>
+      <button class="cr-del" onclick="changeQty('${d.id}',-${q})" aria-label="删除该项" title="删除该项">×</button>
+    `;
+    lines.appendChild(row);
+  });
+  document.getElementById("cartDetailTotal").textContent=cartTotal().toFixed(2);
+}
 // iOS 键盘避让：弹窗内输入留言时键盘弹出，把表单位置上移，避免被键盘遮挡
 function adjustKeyboard(){
   if(!window.visualViewport)return;
@@ -1047,7 +1138,8 @@ function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
   loadMenuLocal();                  // 本地缓存秒开，不等云端
   switchView("customer");
   document.getElementById("wxPushToggle").checked=wxPushEnabled;   // 先用默认值（开）显示，云端加载后覆盖
-  loadWxPush().then(v=>{wxPushEnabled=v;document.getElementById("wxPushToggle").checked=v;}).catch(()=>{});
+  loadWxPush().then(v=>{wxPushEnabled=v;document.getElementById("wxPushToggle").checked=v;_lastWxPush=v;}).catch(()=>{});
+  setInterval(pollWxPushSetting,15000);   // 轻量同步公众号通知开关（仅读一行，开销极小）
   setViewportHeight();
   fitScreens();
   document.getElementById("appLoading").classList.add("hidden");   // 本地已渲染，收起启动遮罩
