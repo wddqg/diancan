@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>🍡 老婆小饭桌 · 点菜小程序</title>
+<title>🍡 老婆小饭桌</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet" />
 <style>
@@ -217,7 +217,6 @@
   .iconbtn.del{background:#FFE0E0;color:#ff7a7a;}
 
   .empty{text-align:center;color:#aa9999;padding:40px 0;font-size:15px;}
-
   /* modal */
   .overlay{
     position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(90,74,82,.45);z-index:20;
@@ -304,6 +303,21 @@
     .topbar h1{font-size:20px;}
     .topbar .sub{font-size:12px;}
   }
+  /* 彩蛋：连续点击屏幕 5 次 → 老婆我爱你 + 飘爱心 */
+  .love-egg{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;}
+  .love-egg.show{display:flex;animation:loveFade 4.2s ease forwards;}
+  .love-hearts{position:absolute;inset:0;}
+  .love-text{position:relative;z-index:2;font-size:min(12vw,60px);font-weight:900;line-height:1.25;text-align:center;letter-spacing:2px;padding:0 14px;background:linear-gradient(90deg,#ff8fb3,#ff2e63);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 6px 16px rgba(255,46,99,.4));animation:lovePulse 1.1s ease-in-out infinite;}
+  .love-heart{position:absolute;bottom:-40px;will-change:transform,opacity;filter:drop-shadow(0 2px 6px rgba(255,46,99,.5));}
+  @keyframes lovePulse{0%,100%{transform:scale(1) rotate(-1deg);}50%{transform:scale(1.08) rotate(1deg);}}
+  @keyframes loveFade{0%{opacity:0;}8%{opacity:1;}82%{opacity:1;}100%{opacity:0;}}
+  @keyframes heartFloat{0%{transform:translateY(0) scale(.5) rotate(0);opacity:0;}12%{opacity:1;}100%{transform:translateY(-118vh) scale(1.15) rotate(25deg);opacity:0;}}
+  /* 彩蛋⑤：「相爱第 N 天」—— 动态定位：内容超过屏幕则置于内容最末(跟随滚动)，否则吸在屏幕底、cartbar 上方 */
+  .love-days{left:0;right:0;text-align:center;font-size:12px;color:#ff8fb3;letter-spacing:1px;padding:8px 12px;opacity:.92;z-index:5;pointer-events:none;}
+  .love-days.stick{position:absolute;bottom:82px;}
+  .love-days.flow{position:static;margin-top:16px;}
+  /* 彩蛋①：长按标题时不弹出系统菜单、不选中文字 */
+  .topbar h1{-webkit-touch-callout:none;user-select:none;touch-action:manipulation;cursor:default;}
 </style>
 </head>
 <body>
@@ -314,7 +328,7 @@
   <div class="deco d4">🍰</div>
 
   <div class="topbar">
-    <h1>🍡 老婆小饭桌</h1>
+    <h1 id="appTitle">🍡 老婆小饭桌</h1>
     <div class="sub">老婆点菜 · 想吃就点～</div>
     <div class="switch">
       <button id="btnCust" class="active" onclick="switchView('customer')">🛒 老婆点菜</button>
@@ -339,6 +353,7 @@
     <div id="syncHint" class="sync-hint hidden">🔄 正在同步云端菜单…</div>
     <div class="grid" id="dishGrid"></div>
     <div id="custEmpty" class="empty hidden">还没有菜品哦，去「添加菜品」添加吧 🍰</div>
+    <div id="loveDays" class="love-days" data-lovedays></div>
   </div>
 
   <!-- 商家视图 -->
@@ -401,6 +416,8 @@
   <div id="historyView" class="screen hidden">
     <div id="hList"></div>
   </div>
+
+  <!-- 彩蛋⑤「相爱第 N 天」：loveDays 元素由 JS 动态放入当前激活的 .screen（见 placeLoveDays） -->
 
   <!-- 购物车栏（左侧可点开详情，右侧去结算） -->
   <div id="cartbar" class="cartbar down">
@@ -466,22 +483,35 @@
 <div id="confirmBg" class="confirm-bg hidden"></div>
 
 <script>
-const CAT_EMOJI={"主食":"🍚","小食":"🍡","饮品":"🍵","甜点":"🍰","其他":"✨"};
+const CAT_EMOJI={"主食":"🍚","小食":"🍡","饮品":"🍵","甜点":"🍰","其他":"🍽️"};
 // 按菜名智能匹配 emoji：关键词越长越优先，未命中回落到分类 emoji
 const EMOJI_MAP=[
-  ["草莓","🍓"],["西瓜","🍉"],["芒果","🥭"],["葡萄","🍇"],["香蕉","🍌"],["苹果","🍎"],["橙子","🍊"],["柠檬","🍋"],["桃子","🍑"],["樱桃","🍒"],["菠萝","🍍"],["椰子","🥥"],
-  ["蛋糕","🍰"],["慕斯","🍰"],["布丁","🍮"],["泡芙","🧁"],["马卡龙","🍬"],["甜甜圈","🍩"],["饼干","🍪"],["巧克力","🍫"],["棒棒糖","🍭"],["大福","🍡"],["麻薯","🍡"],["丸子","🍡"],["团子","🍡"],
-  ["奶茶","🍵"],["咖啡","☕"],["拿铁","☕"],["茶","🍵"],["果汁","🥤"],["可乐","🥤"],["汽水","🥤"],["啤酒","🍺"],["红酒","🍷"],["鸡尾酒","🍸"],["奶昔","🥤"],
-  ["寿司","🍣"],["饭团","🍙"],["粽子","🍙"],["炒饭","🍚"],["盖饭","🍚"],["粥","🥣"],["米饭","🍚"],["饭","🍚"],
-  ["拉面","🍜"],["乌冬","🍜"],["凉面","🍜"],["泡面","🍜"],["面条","🍜"],["意面","🍝"],["河粉","🍜"],["面","🍜"],["粉","🍜"],
-  ["汉堡","🍔"],["三明治","🥪"],["热狗","🌭"],["吐司","🍞"],["面包","🍞"],["法棍","🥖"],["可丽饼","🥞"],["煎饼","🥞"],["班戟","🥞"],["煎饼果子","🥞"],
-  ["薯条","🍟"],["薯","🥔"],["鸡翅","🍗"],["炸鸡","🍗"],["鸡腿","🍗"],["鸡肉","🍗"],["牛","🥩"],["排骨","🍖"],["红烧肉","🥩"],["猪肉","🥓"],["羊肉","🍖"],["肉","🍖"],
-  ["鱼","🐟"],["虾","🦐"],["蟹","🦀"],["鱿鱼","🦑"],["海鲜","🦐"],["生蚝","🦪"],["贝壳","🐚"],
-  ["煎蛋","🍳"],["蛋","🥚"],["蛋挞","🥧"],["豆浆","🥛"],
-  ["火锅","🍲"],["麻辣烫","🌶️"],["汤","🍲"],["煲","🍲"],["咖喱","🍛"],["披萨","🍕"],["便当","🍱"],["寿喜锅","🍲"],
-  ["烤","🍢"],["串","🍢"],["烧烤","🍢"],["炙","🍢"],
-  ["沙拉","🥗"],["青菜","🥬"],["蔬菜","🥬"],["番茄","🍅"],["黄瓜","🥒"],["胡萝卜","🥕"],["玉米","🌽"],["蘑菇","🍄"],["西兰花","🥦"],["辣椒","🌶️"],
-  ["冰淇淋","🍦"],["雪糕","🍦"],["棒冰","🍧"]
+  // —— 水果 ——
+  ["草莓","🍓"],["西瓜","🍉"],["芒果","🥭"],["葡萄","🍇"],["提子","🍇"],["香蕉","🍌"],["苹果","🍎"],["橙子","🍊"],["橘子","🍊"],["柚子","🍊"],["柠檬","🍋"],["桃子","🍑"],["樱桃","🍒"],["车厘子","🍒"],["菠萝","🍍"],["椰子","🥥"],["猕猴桃","🥝"],["奇异果","🥝"],["哈密瓜","🍈"],["蜜瓜","🍈"],["香瓜","🍈"],["木瓜","🍈"],["火龙果","🍉"],["榴莲","🍈"],["柿子","🍊"],["石榴","🍎"],["山楂","🍎"],["圣女果","🍅"],["小番茄","🍅"],["蓝莓","🍇"],["杨梅","🍒"],["荔枝","🍒"],["龙眼","🥥"],["青梅","🍏"],["西梅","🍑"],["杏","🍑"],["李子","🍑"],
+  // —— 甜点 / 烘焙 ——
+  ["蛋糕","🍰"],["芝士蛋糕","🍰"],["慕斯","🍰"],["提拉米苏","🍰"],["千层","🍰"],["布丁","🍮"],["奶冻","🍮"],["蛋挞","🥧"],["蛋黄酥","🥧"],["泡芙","🧁"],["马卡龙","🍬"],["甜甜圈","🍩"],["饼干","🍪"],["曲奇","🍪"],["巧克力","🍫"],["棒棒糖","🍭"],["大福","🍡"],["麻薯","🍡"],["丸子","🍡"],["团子","🍡"],["雪媚娘","🍡"],["铜锣烧","🍡"],["鲷鱼烧","🍡"],["绿豆糕","🍡"],["桂花糕","🍡"],["红豆糕","🍡"],["栗子糕","🍡"],["年糕","🍡"],["驴打滚","🍡"],["糖葫芦","🍢"],["棉花糖","🍡"],["牛轧糖","🍬"],["爆米花","🍿"],["薯片","🍟"],["锅巴","🍘"],["海苔","🍙"],["玛芬","🧁"],["麦芬","🧁"],["纸杯蛋糕","🧁"],
+  // —— 饮品 ——
+  ["奶茶","🍵"],["珍珠奶茶","🍵"],["椰果","🥥"],["咖啡","☕"],["拿铁","☕"],["美式","☕"],["卡布奇诺","☕"],["茶","🍵"],["绿茶","🍵"],["红茶","🍵"],["乌龙茶","🍵"],["果汁","🥤"],["橙汁","🥤"],["苹果汁","🥤"],["柠檬水","🥤"],["可乐","🥤"],["汽水","🥤"],["雪碧","🥤"],["啤酒","🍺"],["红酒","🍷"],["白酒","🍶"],["鸡尾酒","🍸"],["奶昔","🥤"],["酸奶","🥛"],["牛奶","🥛"],["豆奶","🥛"],["椰奶","🥥"],["养乐多","🥛"],["旺仔","🥛"],["奶粉","🥛"],["冰沙","🥤"],["杨枝甘露","🥭"],["双皮奶","🥛"],["烧仙草","🍵"],["西米露","🥥"],["绿豆沙","🥥"],["红豆沙","🥥"],["八宝粥","🥣"],["银耳羹","🥣"],["芝麻糊","🥣"],["酸梅汤","🥤"],["凉茶","🍵"],
+  // —— 主食 / 饭 ——
+  ["寿司","🍣"],["手卷","🍣"],["饭团","🍙"],["粽子","🍙"],["炒饭","🍚"],["蛋炒饭","🍚"],["扬州炒饭","🍚"],["盖饭","🍚"],["盖浇饭","🍚"],["卤肉饭","🍚"],["牛肉饭","🍚"],["鸡腿饭","🍚"],["鳗鱼饭","🍱"],["便当","🍱"],["石锅拌饭","🍚"],["咖喱饭","🍛"],["蛋包饭","🍚"],["煲仔饭","🍚"],["皮蛋瘦肉粥","🥣"],["粥","🥣"],["稀饭","🥣"],["米饭","🍚"],["饭","🍚"],
+  // —— 面 / 粉 ——
+  ["拉面","🍜"],["乌冬","🍜"],["凉面","🍜"],["拌面","🍜"],["汤面","🍜"],["牛肉面","🍜"],["炸酱面","🍜"],["油泼面","🍜"],["担担面","🍜"],["葱油拌面","🍜"],["泡面","🍜"],["面条","🍜"],["意面","🍝"],["意大利面","🍝"],["通心粉","🍝"],["千层面","🍝"],["河粉","🍜"],["米粉","🍜"],["米线","🍜"],["过桥米线","🍜"],["酸辣粉","🍜"],["螺蛳粉","🍜"],["粉丝","🍜"],["宽粉","🍜"],["肠粉","🍥"],["面","🍜"],["粉","🍜"],
+  // —— 包子 / 饼 / 点心 ——
+  ["小笼包","🥟"],["包子","🥟"],["馒头","🍞"],["花卷","🍞"],["烧麦","🥟"],["煎饺","🥟"],["水饺","🥟"],["饺子","🥟"],["馄饨","🥟"],["云吞","🥟"],["锅贴","🥟"],["春卷","🥟"],["煎饼","🥞"],["煎饼果子","🥞"],["手抓饼","🥞"],["鸡蛋灌饼","🥞"],["葱油饼","🥞"],["酱香饼","🥞"],["印度飞饼","🥞"],["可丽饼","🥞"],["班戟","🥞"],["肉夹馍","🍞"],["凉皮","🍜"],
+  // —— 西式 / 快餐 ——
+  ["汉堡","🍔"],["三明治","🥪"],["热狗","🌭"],["吐司","🍞"],["面包","🍞"],["法棍","🥖"],["牛角包","🥐"],["可颂","🥐"],["披萨","🍕"],["薯条","🍟"],["鸡块","🍗"],["鸡米花","🍗"],["鸡翅","🍗"],["炸鸡","🍗"],["鸡腿","🍗"],["鸡肉","🍗"],["鸡柳","🍗"],["烤肠","🌭"],["火腿","🥓"],["培根","🥓"],["香肠","🌭"],
+  // —— 肉 / 荤 ——
+  ["牛排","🥩"],["牛腩","🥩"],["牛肉","🥩"],["肥牛","🥩"],["酱牛肉","🥩"],["排骨","🍖"],["红烧肉","🥩"],["东坡肉","🥩"],["回锅肉","🥩"],["梅菜扣肉","🥩"],["粉蒸肉","🥩"],["叉烧","🥩"],["猪肉","🥓"],["羊肉","🍖"],["羊蝎子","🍖"],["涮羊肉","🍖"],["羊肉串","🍢"],["烤羊腿","🍖"],["狮子头","🍖"],["肉丸","🍖"],["四喜丸子","🍖"],["红烧狮子头","🍖"],["肉","🍖"],
+  // —— 鱼 / 海鲜 ——
+  ["酸菜鱼","🐟"],["水煮鱼","🐟"],["烤鱼","🐟"],["剁椒鱼头","🐟"],["红烧鱼","🐟"],["糖醋鱼","🐟"],["鱼香肉丝","🥩"],["鱼","🐟"],["虾","🦐"],["大虾","🦐"],["基围虾","🦐"],["小龙虾","🦐"],["皮皮虾","🦐"],["虾仁","🦐"],["蟹","🦀"],["螃蟹","🦀"],["龙虾","🦀"],["生蚝","🦪"],["花甲","🐚"],["蛤蜊","🐚"],["蛏子","🐚"],["鱿鱼","🦑"],["章鱼","🦑"],["墨鱼","🦑"],["海鲜","🦐"],["扇贝","🦪"],["海带","🥬"],["紫菜","🍙"],
+  // —— 火锅 / 汤煲 / 烧烤 ——
+  ["火锅","🍲"],["麻辣烫","🍲"],["麻辣香锅","🍲"],["寿喜锅","🍲"],["部队锅","🍲"],["番茄锅","🍲"],["清汤锅","🍲"],["骨汤锅","🍲"],["砂锅","🍲"],["鸡汤","🍲"],["排骨汤","🍲"],["酸辣汤","🍲"],["胡辣汤","🥣"],["酸梅汤","🥤"],["绿豆汤","🥤"],["汤","🍲"],["煲","🍲"],["咖喱","🍛"],["卤味","🍢"],["烤鸭","🦆"],["烤鱼","🐟"],["烤肉","🍖"],["烤肠","🌭"],["烤冷面","🍜"],["串","🍢"],["烧烤","🍢"],["炙","🍢"],["烤串","🍢"],["铁板烧","🍳"],
+  // —— 素菜 / 蔬菜 ——
+  ["沙拉","🥗"],["青菜","🥬"],["蔬菜","🥬"],["番茄","🍅"],["西红柿","🍅"],["黄瓜","🥒"],["胡萝卜","🥕"],["玉米","🌽"],["蘑菇","🍄"],["香菇","🍄"],["金针菇","🍄"],["西兰花","🥦"],["辣椒","🌶️"],["土豆","🥔"],["马铃薯","🥔"],["红薯","🍠"],["紫薯","🍠"],["芋头","🍠"],["山药","🍠"],["藕","🥬"],["莲藕","🥬"],["竹笋","🎋"],["莴笋","🥬"],["菠菜","🥬"],["生菜","🥬"],["白菜","🥬"],["包菜","🥬"],["西葫芦","🥒"],["冬瓜","🥒"],["南瓜","🎃"],["豆芽","🥬"],["豆角","🥬"],["四季豆","🥬"],["茄子","🍆"],["青椒","🥬"],["洋葱","🥬"],["豆腐","🍲"],["麻婆豆腐","🍲"],["豆皮","🍲"],["腐竹","🍲"],["木耳","🍄"],
+  // —— 蛋 / 豆 ——
+  ["煎蛋","🍳"],["茶叶蛋","🥚"],["卤蛋","🥚"],["咸蛋","🥚"],["皮蛋","🥚"],["蛋糕","🍰"],["蛋挞","🥧"],["蛋","🥚"],["豆浆","🥛"],
+  // —— 坚果 / 零食 / 冰品 ——
+  ["花生","🥜"],["瓜子","🥜"],["核桃","🥜"],["杏仁","🥜"],["腰果","🥜"],["夏威夷果","🥜"],["开心果","🥜"],["板栗","🌰"],["松子","🥜"],["榛子","🥜"],["碧根果","🥜"],["坚果","🥜"],["果冻","🍮"],["龟苓膏","🍮"],["冰粉","🍮"],["凉粉","🍮"],["仙草","🍵"],["冰淇淋","🍦"],["雪糕","🍦"],["棒冰","🍧"],["红薯","🍠"],["紫薯","🍠"],["薯条","🍟"],["薯片","🍿"],["马铃薯","🥔"]
 ];
 EMOJI_MAP.sort((a,b)=>b[0].length-a[0].length);   // 长关键词优先，匹配更精准
 function guessEmoji(name,cat){
@@ -648,7 +678,14 @@ async function saveMenuRemote(){
     body:JSON.stringify({id:"shared",data:menu,updated_at:new Date().toISOString()})
   });
 }
-async function loadOrders(){try{orders=await loadOrdersRemote();}catch(e){console.warn("loadOrders failed",e);orders=[];}}
+async function loadOrders(){
+  try{
+    const cloud=await loadOrdersRemote();
+    const cloudNos=new Set(cloud.map(o=>o.no));
+    orders=[...cloud, ...orders.filter(o=>!cloudNos.has(o.no))];
+    flushPendingOrders();
+  }catch(e){console.warn("loadOrders failed",e);}
+}
 
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1600);}
 
@@ -667,6 +704,7 @@ function switchView(v){
   else if(v==="merchant")renderMerchant();
   else renderOrders();
   fitScreens();
+  placeLoveDays();
 }
 // 兜底：强制内容区高度 = 手机框高度 - 顶栏高度（应对某些 iOS WebView 下 grid/flex 高度塌陷）
 function fitScreens(){
@@ -675,6 +713,24 @@ function fitScreens(){
   if(!ph||!tb)return;
   const avail=Math.max(0,ph.clientHeight-tb.offsetHeight);
   document.querySelectorAll(".screen").forEach(s=>{s.style.maxHeight=avail+"px";});
+}
+// 彩蛋⑤定位：把「相爱第 N 天」放进当前激活的 .screen。
+// 内容超过屏幕(可滚动) → 走文档流(flow)，在内容最末、跟随滚动；
+// 内容未超过屏幕 → 吸在屏幕底(stick)，cartbar 上方。
+// 注意：renderCartBar 给 customerView 加的 paddingBottom(110px) 会虚高 scrollHeight，
+// 测量溢出前先临时归零，避免误判为「溢出」。
+function placeLoveDays(){
+  const el=document.getElementById("loveDays");
+  if(!el)return;
+  const screen=document.querySelector(".screen:not(.hidden)");
+  if(!screen)return;
+  if(el.parentNode!==screen)screen.appendChild(el);   // 移到激活 screen 内（已在内则移到末尾）
+  const prev=screen.style.paddingBottom;              // 记录 inline padding（renderCartBar 设的）
+  screen.style.paddingBottom="0px";
+  const overflow=screen.scrollHeight>screen.clientHeight+2;
+  screen.style.paddingBottom=prev;                    // 还原
+  el.classList.toggle("flow",overflow);
+  el.classList.toggle("stick",!overflow);
 }
 /* iOS 视觉视口兜底：用 innerHeight（含 toolbar 收缩后的真实可见高度）给手机框定高，
    绕开 100dvh/-webkit-fill-available 在老版本 iOS 上把高度解析为 0 的坑 */
@@ -735,6 +791,7 @@ function renderCustomer(){
     cardMap[d.id]=card;
   });
   renderCartBar();
+  placeLoveDays();
 }
 // 数量变化只更新对应卡片的数量区，避免整网格重渲染（图片重新解码会闪、卡顿）
 function updateCardQty(id){
@@ -771,6 +828,7 @@ function renderCartBar(){
   // 购物车详情弹窗开着时，实时同步列表与合计
   const co=document.getElementById("cartOverlay");
   if(co && !co.classList.contains("hidden"))renderCartDetail();
+  placeLoveDays();
 }
 
 /* ---------- 结算 / 支付 ---------- */
@@ -891,7 +949,11 @@ function payNow(){
     const items=cartItems().map(d=>({name:d.name,price:d.price,qty:cart[d.id]}));
     const note=(document.getElementById("fNote").value||"").trim();
     const o={no,items,total:cartTotal(),pay:"wechat",time:Date.now(),done:false,note};
-    saveOrderRemote(o).catch(()=>toast("云端同步失败，可在「老公订单」重试"));
+    // 先落本地：保证断网/云端失败时订单不丢、且立刻在「老公订单」可见
+    orders.unshift(o); lastOrdersFetch=Date.now(); renderOrdersLocal();
+    saveOrderRemote(o)
+      .then(()=>{ pendingOrders=pendingOrders.filter(x=>x!==o); })
+      .catch(()=>{ if(!pendingOrders.includes(o))pendingOrders.push(o); toast("云端同步失败，已保留在本地，稍后自动重试"); });
     // 微信推送：下单后通知老公（需先在 WX_PUSH_URL 填 Edge Function 地址，且公众号通知开关打开；失败不影响下单）
     if(WX_PUSH_URL && wxPushEnabled){
       fetch(WX_PUSH_URL,{method:"POST",headers:{"Content-Type":"application/json"},
@@ -991,6 +1053,7 @@ function renderMerchant(){
       <button class="iconbtn del" onclick="delDish('${d.id}')">🗑️</button>`;
     box.appendChild(row);
   });
+  placeLoveDays();
 }
 function updatePrice(id,val){
   const p=parseFloat(val);
@@ -1006,6 +1069,18 @@ async function delDish(id){
 }
 let ordersLoaded=false;
 let lastOrdersFetch=0;
+let pendingOrders=[];   // 云端保存失败、待重试的订单（避免断网丢单）
+// 把之前云端失败的订单补推上去；成功即移出队列，切到老公订单/启动时会自动触发
+async function flushPendingOrders(){
+  if(!pendingOrders.length)return;
+  const todo=pendingOrders.slice();
+  let ok=0;
+  for(const o of todo){
+    try{ await saveOrderRemote(o); pendingOrders=pendingOrders.filter(x=>x!==o); ok++; }
+    catch(e){ /* 仍失败则保留，下次再试 */ }
+  }
+  if(ok)toast("订单已同步到云端 ☁️");
+}
 async function renderOrders(){
   const box=document.getElementById("oList");
   const hbox=document.getElementById("hList");
@@ -1017,9 +1092,13 @@ async function renderOrders(){
     renderOrdersLocal();return;        // 3 秒内已拉过，直接复用本地，省一次请求
   }
   try{
-    orders=await loadOrdersRemote();
+    const cloud=await loadOrdersRemote();
+    // 合并：以云端为准，但保留尚未同步成功的本地订单，避免切 tab 刷新被云端覆盖而丢单
+    const cloudNos=new Set(cloud.map(o=>o.no));
+    orders=[...cloud, ...orders.filter(o=>!cloudNos.has(o.no))];
     ordersLoaded=true;lastOrdersFetch=Date.now();
     renderOrdersLocal();
+    flushPendingOrders();   // 趁有网把之前失败的订单补推上去
   }catch(e){
     if(!ordersLoaded){
       toast("订单加载失败，请检查网络");  // 已有数据则静默，不反复打扰
@@ -1037,6 +1116,7 @@ function renderOrdersLocal(){
   else active.forEach(o=>box.appendChild(orderCard(o,false)));
   if(done.length===0){hbox.innerHTML='<div class="empty">还没有完成的订单～<br>在「老公订单」点 ❤️ 完成它吧 💗</div>';}
   else done.forEach(o=>hbox.appendChild(orderCard(o,true)));
+  placeLoveDays();
 }
 function orderCard(o,isDone){
   const card=document.createElement("div");card.className="formcard";
@@ -1147,7 +1227,7 @@ function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
   await Promise.all([loadOrders(),syncMenuCloud()]);             // 后台同步云端
   if(hint)hint.classList.add("hidden");
 })();
-function onViewportChange(){setViewportHeight();fitScreens();}
+function onViewportChange(){setViewportHeight();fitScreens();placeLoveDays();}
 window.addEventListener("resize",onViewportChange);
 window.addEventListener("orientationchange",onViewportChange);
 if(window.visualViewport){
@@ -1159,6 +1239,84 @@ if(window.visualViewport){
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape")document.querySelectorAll(".overlay:not(.hidden)").forEach(o=>o.classList.add("hidden"));
 });
+
+// 彩蛋：连点某个 tab 按钮 5 下 → 弹出该 tab 专属甜言 + 满屏飘 emoji
+let _loveBusy=false;
+function showLoveEgg(text,emojis){
+  if(_loveBusy)return;
+  _loveBusy=true;
+  const egg=document.getElementById("loveEgg");
+  const box=document.getElementById("loveHearts");
+  document.getElementById("loveText").textContent=text;
+  box.innerHTML="";
+  const N=46;
+  for(let i=0;i<N;i++){
+    const h=document.createElement("span");
+    h.className="love-heart";
+    h.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    h.style.left=(Math.random()*100)+"%";
+    h.style.fontSize=(22+Math.random()*30)+"px";
+    h.style.animation="heartFloat "+(2.6+Math.random()*2.2)+"s linear forwards";
+    h.style.animationDelay=(Math.random()*1.2)+"s";
+    box.appendChild(h);
+  }
+  egg.classList.add("show");
+  setTimeout(()=>{egg.classList.remove("show");_loveBusy=false;},4300);
+}
+// 给某个 tab 按钮绑定「连点 5 下」监听；每个按钮各自计数，互不干扰，正常点餐不会误触发
+function bindEgg(btnId,text,emojis){
+  const btn=document.getElementById(btnId);
+  if(!btn)return;
+  let c=0,t=null;
+  btn.addEventListener("click",()=>{
+    if(_loveBusy)return;
+    c++;clearTimeout(t);t=setTimeout(()=>{c=0;},900); // 超过 0.9s 没继续点则归零
+    if(c>=5){c=0;showLoveEgg(text,emojis);}
+  });
+}
+bindEgg("btnCust","老婆我爱你 ❤️",["❤️","💖","💗","💕"]);   // 🛒 老婆点菜
+bindEgg("btnOrder","老婆最漂亮 💕",["💕","🌸","💗","✨"]);     // 📋 老公订单
+bindEgg("btnHistory","过来亲一口 💋",["💋","💕","💗","🌟"]);  // 📜 历史订单
+bindEgg("btnMer","爱你每一天 💞",["💞","🌸","💖","✨"]);      // 🛠️ 添加菜品
+
+// 彩蛋①：长按标题「🍡 老婆小饭桌」约 3 秒 → 弹出甜言 + 飘爱心
+(function(){
+  const t=document.getElementById("appTitle");
+  if(!t)return;
+  let lpTimer=null;
+  const start=()=>{lpTimer=setTimeout(()=>{showLoveEgg("今天也是超爱你的一天 💕",["💕","🌸","💗","✨"]);},3000);};
+  const cancel=()=>{clearTimeout(lpTimer);};
+  t.addEventListener("pointerdown",start);
+  t.addEventListener("pointerup",cancel);
+  t.addEventListener("pointerleave",cancel);
+  t.addEventListener("pointercancel",cancel);
+  t.addEventListener("contextmenu",e=>e.preventDefault());
+})();
+
+// 彩蛋⑤：每个视图底部「这是我们相爱的第 N 天」（起始日 2026-03-27），滑到最下方才看得到
+(function(){
+  const start=new Date(2026,2,27); // 月份从 0 开始，2 = 三月
+  const today=new Date(); today.setHours(0,0,0,0); // 当地今天零点，避免跨时区差一天
+  const days=Math.max(1,Math.floor((today.getTime()-start.getTime())/86400000)+1); // 起始日算第 1 天
+  const text="💕 这是我们相爱的第 "+days+" 天 💕";
+  document.querySelectorAll("[data-lovedays]").forEach(el=>{ el.textContent=text; });
+})();
+
+// 彩蛋⑥：键盘依次敲出 iloveyou → 满屏大爱心雨
+(function(){
+  const code="iloveyou";let buf="";
+  document.addEventListener("keydown",e=>{
+    if(e.key&&e.key.length===1){
+      buf=(buf+e.key.toLowerCase()).slice(-code.length);
+      if(buf===code)showLoveEgg("我超爱你呀 💞",["❤️","💖","💗","💕","💞","🌸","💋"]);
+    }
+  });
+})();
 </script>
+  <!-- 彩蛋：连点任意 tab 按钮 5 次 → 弹出该 tab 专属甜言 + 满屏飘 emoji -->
+  <div id="loveEgg" class="love-egg" aria-hidden="true">
+    <div id="loveHearts" class="love-hearts"></div>
+    <div id="loveText" class="love-text">老婆我爱你 ❤️</div>
+  </div>
 </body>
 </html>
