@@ -75,6 +75,7 @@
   /* category chips */
   /* 顾客视图头部：分类条 + 搜索框 吸顶固定，不被菜品/装饰遮挡 */
   .custHead{position:sticky;top:0;z-index:9;background:#fffdfb;padding:6px 0 8px;margin:0;}
+  .custHead::before{content:"";position:absolute;left:0;right:0;top:-16px;height:16px;background:#fffdfb;z-index:-1;pointer-events:none;}   /* 向上延伸背景，盖住 .screen 顶部 padding 缝隙，避免漂浮 .deco 漏出 */
   .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none;}
   .chips::-webkit-scrollbar{display:none;}
   .chip{
@@ -143,6 +144,18 @@
   /* merchant form */
   .formcard{background:#fff;border-radius:22px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px;}
   .formcard h3{margin:0 0 12px;font-size:18px;color:var(--lav);}
+  /* 设置卡：公众号通知开关（独立类名，避免与顶部 .switch 冲突） */
+  .settcard{background:var(--cream);border-radius:20px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:16px;}
+  .settrow{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .setttext{flex:1;min-width:0;}
+  .setttitle{font-size:15px;font-weight:600;color:var(--ink);}
+  .settinfo{font-size:12px;color:#a99bb8;margin-top:2px;}
+  .togglesw{position:relative;display:inline-block;width:52px;height:30px;flex:none;}
+  .togglesw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:2;}
+  .togglesw .track{position:absolute;inset:0;background:#e3d9ec;border-radius:999px;transition:.22s;pointer-events:none;}
+  .togglesw .track:before{content:"";position:absolute;left:3px;top:3px;height:24px;width:24px;background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .togglesw input:checked + .track{background:linear-gradient(135deg,var(--pink),var(--lav));}
+  .togglesw input:checked + .track:before{transform:translateX(22px);}
   .field{margin-bottom:12px;}
   .field label{display:block;font-size:13px;color:#8a7a7a;margin-bottom:5px;}
   .field input,.field select{
@@ -179,6 +192,10 @@
     box-shadow:var(--shadow);margin-bottom:12px;
   }
   .mlist .mimg{width:54px;height:54px;border-radius:14px;object-fit:cover;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:28px;flex:0 0 auto;}
+  /* 无图菜品：按菜名智能生成的粉彩渐变可爱图案 */
+  .em{display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);border-radius:50%;box-shadow:0 3px 8px rgba(0,0,0,.07);line-height:1;}
+  .card .img .em{width:66px;height:66px;font-size:34px;}
+  .mlist .mimg .em{width:38px;height:38px;font-size:22px;}
   .mlist .minfo{flex:1;min-width:0;}
   .mlist .mname{font-size:15px;}
   .mlist .mprice{font-size:14px;color:var(--pink);}
@@ -268,7 +285,7 @@
 <div class="phone">
   <div class="deco d1">🍓</div>
   <div class="deco d2">🍡</div>
-  <div class="deco d3">🧋</div>
+  <div class="deco d3">🍵</div>
   <div class="deco d4">🍰</div>
 
   <div class="topbar">
@@ -316,7 +333,7 @@
         <select id="fCat">
           <option value="主食">🍚 主食</option>
           <option value="小食">🍡 小食</option>
-          <option value="饮品">🧋 饮品</option>
+          <option value="饮品">🍵 饮品</option>
           <option value="甜点">🍰 甜点</option>
           <option value="其他">✨ 其他</option>
         </select>
@@ -340,6 +357,18 @@
 
   <!-- 订单视图 -->
   <div id="orderView" class="screen hidden">
+    <div class="settcard">
+      <div class="settrow">
+        <div class="setttext">
+          <div class="setttitle">📣 公众号下单通知</div>
+          <div class="settinfo">新订单推送到老公微信</div>
+        </div>
+        <label class="togglesw">
+          <input type="checkbox" id="wxPushToggle" onchange="onWxPushToggle()" aria-label="公众号下单通知开关" />
+          <span class="track"></span>
+        </label>
+      </div>
+    </div>
     <div id="oList"></div>
   </div>
 
@@ -400,11 +429,43 @@
 <div id="confirmBg" class="confirm-bg hidden"></div>
 
 <script>
-const CAT_EMOJI={"主食":"🍚","小食":"🍡","饮品":"🧋","甜点":"🍰","其他":"✨"};
+const CAT_EMOJI={"主食":"🍚","小食":"🍡","饮品":"🍵","甜点":"🍰","其他":"✨"};
+// 按菜名智能匹配 emoji：关键词越长越优先，未命中回落到分类 emoji
+const EMOJI_MAP=[
+  ["草莓","🍓"],["西瓜","🍉"],["芒果","🥭"],["葡萄","🍇"],["香蕉","🍌"],["苹果","🍎"],["橙子","🍊"],["柠檬","🍋"],["桃子","🍑"],["樱桃","🍒"],["菠萝","🍍"],["椰子","🥥"],
+  ["蛋糕","🍰"],["慕斯","🍰"],["布丁","🍮"],["泡芙","🧁"],["马卡龙","🍬"],["甜甜圈","🍩"],["饼干","🍪"],["巧克力","🍫"],["棒棒糖","🍭"],["大福","🍡"],["麻薯","🍡"],["丸子","🍡"],["团子","🍡"],
+  ["奶茶","🍵"],["咖啡","☕"],["拿铁","☕"],["茶","🍵"],["果汁","🥤"],["可乐","🥤"],["汽水","🥤"],["啤酒","🍺"],["红酒","🍷"],["鸡尾酒","🍸"],["奶昔","🥤"],
+  ["寿司","🍣"],["饭团","🍙"],["粽子","🍙"],["炒饭","🍚"],["盖饭","🍚"],["粥","🥣"],["米饭","🍚"],["饭","🍚"],
+  ["拉面","🍜"],["乌冬","🍜"],["凉面","🍜"],["泡面","🍜"],["面条","🍜"],["意面","🍝"],["河粉","🍜"],["面","🍜"],["粉","🍜"],
+  ["汉堡","🍔"],["三明治","🥪"],["热狗","🌭"],["吐司","🍞"],["面包","🍞"],["法棍","🥖"],["可丽饼","🥞"],["煎饼","🥞"],["班戟","🥞"],["煎饼果子","🥞"],
+  ["薯条","🍟"],["薯","🥔"],["鸡翅","🍗"],["炸鸡","🍗"],["鸡腿","🍗"],["鸡肉","🍗"],["牛","🥩"],["排骨","🍖"],["红烧肉","🥩"],["猪肉","🥓"],["羊肉","🍖"],["肉","🍖"],
+  ["鱼","🐟"],["虾","🦐"],["蟹","🦀"],["鱿鱼","🦑"],["海鲜","🦐"],["生蚝","🦪"],["贝壳","🐚"],
+  ["煎蛋","🍳"],["蛋","🥚"],["蛋挞","🥧"],["豆浆","🥛"],
+  ["火锅","🍲"],["麻辣烫","🌶️"],["汤","🍲"],["煲","🍲"],["咖喱","🍛"],["披萨","🍕"],["便当","🍱"],["寿喜锅","🍲"],
+  ["烤","🍢"],["串","🍢"],["烧烤","🍢"],["炙","🍢"],
+  ["沙拉","🥗"],["青菜","🥬"],["蔬菜","🥬"],["番茄","🍅"],["黄瓜","🥒"],["胡萝卜","🥕"],["玉米","🌽"],["蘑菇","🍄"],["西兰花","🥦"],["辣椒","🌶️"],
+  ["冰淇淋","🍦"],["雪糕","🍦"],["棒冰","🍧"]
+];
+EMOJI_MAP.sort((a,b)=>b[0].length-a[0].length);   // 长关键词优先，匹配更精准
+function guessEmoji(name,cat){
+  const n=(name||"").toLowerCase();
+  for(const [kw,em] of EMOJI_MAP){ if(kw && n.includes(kw.toLowerCase())) return em; }
+  return CAT_EMOJI[cat]||"🍽️";
+}
+// 按菜名稳定生成粉彩渐变（同菜名永远同色，柔和可爱）
+const PASTELS=["#FFD1DC","#FFE0AC","#FFDFD3","#FBE4FF","#DBCDF0","#C6DEF1","#C9E4DE","#D4F0F0","#E2F0CB","#FFF1B6"];
+function dishGradient(name){
+  const s=name||"dish";let h=0;
+  for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+  const a=h%PASTELS.length;
+  let b=(h>>>13)%PASTELS.length;
+  if(b===a)b=(a+1)%PASTELS.length;       // 撞色时回环到相邻色，确保始终是渐变
+  return `linear-gradient(135deg,${PASTELS[a]},${PASTELS[b]})`;
+}
 const PAY_NAME="亲亲支付";
 const DEFAULT_MENU=[
   {id:"d1",name:"草莓大福",price:12,cat:"甜点",desc:"软软糯糯超好吃",emoji:"🍓"},
-  {id:"d2",name:"芋泥啵啵奶茶",price:16,cat:"饮品",desc:"少糖少冰刚刚好",emoji:"🧋"},
+  {id:"d2",name:"芋泥啵啵奶茶",price:16,cat:"饮品",desc:"少糖少冰刚刚好",emoji:"🍵"},
   {id:"d3",name:"照烧鸡肉饭",price:28,cat:"主食",desc:"满满一碗超满足",emoji:"🍱"},
   {id:"d4",name:"一口小汉堡",price:22,cat:"主食",desc:"萌萌的小汉堡",emoji:"🍔"},
   {id:"d5",name:"芝士薯条",price:15,cat:"小食",desc:"拉丝芝士yyds",emoji:"🍟"},
@@ -423,6 +484,24 @@ const SB_URL="https://ewviyhdhmkwxmonvdylh.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3dml5aGRobWt3eG1vbnZkeWxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MzExNzksImV4cCI6MjEwMDIwNzE3OX0.X8vEUi37L0blomft4vwTbgIR0iYgOgL7Vij_KQHhy4U";
 // 微信推送：下单后调用的 Supabase Edge Function（函数名 notify-wechat，部署后实际地址为 /super-worker）。留空则不推送
 const WX_PUSH_URL="https://ewviyhdhmkwxmonvdylh.supabase.co/functions/v1/super-worker";
+let wxPushEnabled=true;   // 公众号下单通知总开关，默认开；实际状态从云端（menu 表 id=wxpush 行）加载
+async function loadWxPush(){
+  try{
+    const rows=await sbFetch("menu?select=data&id=eq.wxpush&limit=1");
+    if(rows&&rows.length&&rows[0].data)return !!rows[0].data.enabled;
+  }catch(e){console.warn("loadWxPush failed",e);}
+  return true;   // 云端无记录时视为开
+}
+async function saveWxPush(enabled){
+  try{
+    await sbFetch("menu?on_conflict=id",{
+      method:"POST",
+      headers:{"Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({id:"wxpush",data:{enabled},updated_at:new Date().toISOString()})
+    });
+  }catch(e){toast("通知开关同步失败，可重试");console.warn("saveWxPush failed",e);}
+}
+function onWxPushToggle(){wxPushEnabled=document.getElementById("wxPushToggle").checked;saveWxPush(wxPushEnabled);}
 async function sbFetch(path,opts={}){
   const headers=Object.assign({
     "apikey":SB_KEY,
@@ -478,14 +557,13 @@ async function syncMenuCloud(){
   try{
     const cloud=await loadMenuRemote();
     if(cloud!==null){
-      if(menuDirty){           // 本地有未同步的新增/改价/删除，云端旧数据不得覆盖，反手把本地最新推上去
-        save();
-        menuDirty=false;       // push 已发起，标记已同步；下次启动改为以云端为准，支持反向同步
+      if(menuDirty){           // 本地有未同步的改动，先把本地最新推上去；成功才清 dirty，失败保留以便下次启动重试
+        try{ await save(); }catch(e){}
       }else{
         menu=cloud;cacheLocal();
       }
     }
-    else{save();menuDirty=false;}
+    else{ await save(); }      // 云端还没有菜单行，上传本地作为初始共享（成功才清 dirty）
     renderCustomerIfVisible();
   }catch(e){console.warn("syncMenuCloud failed",e);}
 }
@@ -502,24 +580,23 @@ function cacheLocal(){
     }catch(e2){console.warn("cacheLocal failed even without images",e2);}
   }
 }
-function save(){
+async function save(){          // 写本地缓存 + 推云端；推送成功才清 menuDirty，失败保留以便下次重试
   cacheLocal();
-  saveMenuRemote();                               // 异步同步云端（失败静默，本地仍可用）
+  try{ await saveMenuRemote(); menuDirty=false; }
+  catch(e){ console.warn("saveMenuRemote failed",e); }   // 推送失败：保留 dirty，下次启动/操作会再推
 }
 async function loadMenuRemote(){
-  const rows=await sbFetch("menu?select=*&limit=1");
-  if(rows&&rows.length)return (rows[0].data||[]); // 行存在 → 返回其中的菜单（可能为空数组）
+  const rows=await sbFetch("menu?select=data&id=eq.shared&limit=1");
+  if(rows&&rows.length)return (rows[0].data||[]); // 只取 shared 行 → 返回其中的菜单（可能为空数组）
   return null;                                    // 还没有共享菜单行
 }
 async function saveMenuRemote(){
   if(!Array.isArray(menu))return;
-  try{
-    await sbFetch("menu?on_conflict=id",{
-      method:"POST",
-      headers:{"Prefer":"resolution=merge-duplicates"},
-      body:JSON.stringify({id:"shared",data:menu,updated_at:new Date().toISOString()})
-    });
-  }catch(e){console.warn("saveMenuRemote failed",e);}
+  await sbFetch("menu?on_conflict=id",{
+    method:"POST",
+    headers:{"Prefer":"resolution=merge-duplicates"},
+    body:JSON.stringify({id:"shared",data:menu,updated_at:new Date().toISOString()})
+  });
 }
 async function loadOrders(){try{orders=await loadOrdersRemote();}catch(e){console.warn("loadOrders failed",e);orders=[];}}
 
@@ -593,7 +670,8 @@ function renderCustomer(){
         : "「"+curCat+"」分类下还没有菜品～");
   list.forEach(d=>{
     const card=document.createElement("div");card.className="card";card.dataset.id=d.id;
-    const imgHtml=d.image?`<div class="img"><img src="${d.image}" alt="${escapeHtml(d.name)}"></div>`:`<div class="img"><div>${d.emoji||"🍽️"}</div></div>`;
+    const em=d.emoji||guessEmoji(d.name,d.cat);
+    const imgHtml=d.image?`<div class="img"><img src="${d.image}" alt="${escapeHtml(d.name)}"></div>`:`<div class="img"><div class="ph" style="background:${dishGradient(d.name)}"><span class="em">${escapeHtml(em)}</span></div></div>`;
     card.innerHTML=`
       ${d.cat?`<div class="tag">${CAT_EMOJI[d.cat]||""} ${d.cat}</div>`:""}
       ${imgHtml}
@@ -723,8 +801,8 @@ function payNow(){
     const note=(document.getElementById("fNote").value||"").trim();
     const o={no,items,total:cartTotal(),pay:"wechat",time:Date.now(),done:false,note};
     saveOrderRemote(o).catch(()=>toast("云端同步失败，可在「老公订单」重试"));
-    // 微信推送：下单后通知老公（需先在 WX_PUSH_URL 填 Edge Function 地址，失败不影响下单）
-    if(WX_PUSH_URL){
+    // 微信推送：下单后通知老公（需先在 WX_PUSH_URL 填 Edge Function 地址，且公众号通知开关打开；失败不影响下单）
+    if(WX_PUSH_URL && wxPushEnabled){
       fetch(WX_PUSH_URL,{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({no,items,total:o.total,note:o.note,time:o.time})}).catch(()=>{});
     }
@@ -794,7 +872,7 @@ function addDish(){
   const desc=document.getElementById("fDesc").value.trim();
   if(!name){toast("给菜品起个名字吧～");return;}
   if(isNaN(price)||price<0){toast("价格要填对哦");return;}
-  const d={id:"d"+Date.now(),name,price,cat,desc,image:pickedImg,emoji:CAT_EMOJI[cat]||"🍽️"};
+  const d={id:"d"+Date.now(),name,price,cat,desc,image:pickedImg,emoji:guessEmoji(name,cat)};
   menu.unshift(d);menuDirty=true;save();
   // reset form
   document.getElementById("fName").value="";
@@ -811,7 +889,8 @@ function renderMerchant(){
   if(menu.length===0){box.innerHTML='<div class="empty">菜单空空，添加第一道菜吧 🍰</div>';return;}
   menu.forEach(d=>{
     const row=document.createElement("div");row.className="mrow";
-    const imgHtml=d.image?`<img class="mimg" src="${d.image}" alt="${escapeHtml(d.name)}">`:`<div class="mimg">${d.emoji||"🍽️"}</div>`;
+    const em=d.emoji||guessEmoji(d.name,d.cat);
+    const imgHtml=d.image?`<img class="mimg" src="${d.image}" alt="${escapeHtml(d.name)}">`:`<div class="mimg" style="background:${dishGradient(d.name)}"><span class="em">${escapeHtml(em)}</span></div>`;
     row.innerHTML=`
       ${imgHtml}
       <div class="minfo">
@@ -851,7 +930,11 @@ async function renderOrders(){
     ordersLoaded=true;lastOrdersFetch=Date.now();
     renderOrdersLocal();
   }catch(e){
-    if(!ordersLoaded)toast("订单加载失败，请检查网络");  // 已有数据则静默，不反复打扰
+    if(!ordersLoaded){
+      toast("订单加载失败，请检查网络");  // 已有数据则静默，不反复打扰
+      box.innerHTML='<div class="empty">订单加载失败了～<br>检查网络后重新打开此标签 🔄</div>';
+      hbox.innerHTML='<div class="empty">订单加载失败了～<br>检查网络后重新打开此标签 🔄</div>';
+    }
   }
 }
 function renderOrdersLocal(){
@@ -963,6 +1046,8 @@ function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
 (async function init(){
   loadMenuLocal();                  // 本地缓存秒开，不等云端
   switchView("customer");
+  document.getElementById("wxPushToggle").checked=wxPushEnabled;   // 先用默认值（开）显示，云端加载后覆盖
+  loadWxPush().then(v=>{wxPushEnabled=v;document.getElementById("wxPushToggle").checked=v;}).catch(()=>{});
   setViewportHeight();
   fitScreens();
   document.getElementById("appLoading").classList.add("hidden");   // 本地已渲染，收起启动遮罩
